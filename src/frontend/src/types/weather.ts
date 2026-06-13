@@ -6,6 +6,7 @@ export interface CurrentWeatherData {
   humidity: number;
   current_precipitation: string; // "" | "rain"
   overcast: string;              // "clear" | "partly cloudy" | "cloudy"
+  'wind speed'?: number;
 }
 
 export interface HourlyEntry {

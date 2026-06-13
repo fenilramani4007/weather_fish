@@ -1,27 +1,34 @@
 import React, { useState } from 'react';
 import DailyForecast from './DailyForecast';
 import WeeklyForecast from './WeeklyForecast';
+import HistoryChart from './HistoryChart';
 import { useLocation } from '../contexts/LocationContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
-type ForecastView = 'today' | 'week1' | 'week2';
-
-const TAB_LABELS: Record<ForecastView, string> = {
-  today: 'Heute',
-  week1: '1. Woche',
-  week2: '2. Woche',
-};
+type ForecastView = 'today' | 'week1' | 'week2' | 'history';
 
 const WeatherVisuals: React.FC = () => {
   const { currentLocation } = useLocation();
+  const { language } = useLanguage();
+  const de = language === 'de';
   const [view, setView] = useState<ForecastView>('today');
+
+  const TAB_LABELS: Record<ForecastView, string> = {
+    today:   de ? 'Heute'    : 'Today',
+    week1:   de ? '1. Woche' : 'Week 1',
+    week2:   de ? '2. Woche' : 'Week 2',
+    history: de ? 'Verlauf'  : 'History',
+  };
 
   if (!currentLocation) {
     return (
       <div className="wf-card">
-        <div className="wf-card-title">Vorhersage</div>
+        <div className="wf-card-title">{de ? 'Vorhersage' : 'Forecast'}</div>
         <div className="wf-empty">
           <div className="wf-empty-icon">📊</div>
-          <div className="wf-empty-label">Kein Standort ausgewählt</div>
+          <div className="wf-empty-label">
+            {de ? 'Kein Standort ausgewählt' : 'No location selected'}
+          </div>
         </div>
       </div>
     );
@@ -30,7 +37,7 @@ const WeatherVisuals: React.FC = () => {
   return (
     <div className="wf-card">
       <div className="wf-card-title">
-        Vorhersage
+        {de ? 'Vorhersage & Verlauf' : 'Forecast & History'}
         <span>{currentLocation.name}</span>
       </div>
 
@@ -46,10 +53,10 @@ const WeatherVisuals: React.FC = () => {
         ))}
       </div>
 
-      {/* DailyForecast and WeeklyForecast now use WeatherContext — no plz prop needed */}
-      {view === 'today' && <DailyForecast />}
-      {view === 'week1' && <WeeklyForecast week={1} />}
-      {view === 'week2' && <WeeklyForecast week={2} />}
+      {view === 'today'   && <DailyForecast />}
+      {view === 'week1'   && <WeeklyForecast week={1} />}
+      {view === 'week2'   && <WeeklyForecast week={2} />}
+      {view === 'history' && <HistoryChart />}
     </div>
   );
 };

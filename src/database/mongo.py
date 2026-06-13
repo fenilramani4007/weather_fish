@@ -9,9 +9,9 @@ Collections
 """
 
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
-from pymongo import MongoClient, ASCENDING
+from pymongo import MongoClient, ASCENDING, DESCENDING
 from pymongo.collection import Collection
 
 MONGODB_URI = os.environ.get("MONGODB_URI", "mongodb://localhost:27017")
@@ -74,6 +74,10 @@ def _reports_col() -> Collection:
 
 def _locations_col() -> Collection:
     return get_db()["locations"]
+
+
+def _history_col() -> Collection:
+    return get_db()["weather_history"]
 
 
 # ── Weather snapshots ──────────────────────────────────────────────────────────
@@ -181,3 +185,58 @@ def get_all_locations() -> list[dict]:
 def delete_location(zipcode: str) -> bool:
     result = _locations_col().delete_one({"zipcode": zipcode})
     return result.deleted_count > 0
+
+
+# ── Weather history ────────────────────────────────────────────────────────────
+
+def append_history(
+    zipcode: str,
+    city: str,
+    current: dict,
+    daily_weekone: dict,
+) -> None:
+    """
+    Append a weather snapshot to the history log.
+    Unlike weather_snapshots (which upserts), history always inserts a new record.
+    Keeps at most 90 days per location to avoid unbounded growth.
+    """
+    now = datetime.now(timezone.utc)
+
+    # Extract today's min/max from daily_weekone if available
+    daily_summary: dict = {}
+    if daily_weekone:
+        today_key = now.strftime("%Y-%m-%d")
+        today_data = daily_weekone.get(today_key) or next(iter(daily_weekone.values()), {})
+        daily_summary = {
+            "mintemp":   today_data.get("mintemp"),
+            "maxtemp":   today_data.get("maxtemp"),
+            "overcast":  today_data.get("overcast"),
+            "rain_prob": today_data.get("precipitation probability", today_data.get("precipitation", 0)),
+        }
+
+    _history_col().insert_one({
+        "zipcode":       zipcode,
+        "city":          city,
+        "recorded_at":   now,
+        "temperature":   current.get("temperature"),
+        "feels_like":    current.get("feels like"),
+        "humidity":      current.get("humidity"),
+        "overcast":      current.get("overcast"),
+        "precipitation": current.get("current_precipitation"),
+        "wind_speed":    current.get("wind speed"),
+        "daily_summary": daily_summary,
+    })
+
+    # Prune records older than 90 days
+    cutoff = now - timedelta(days=90)
+    _history_col().delete_many({"zipcode": zipcode, "recorded_at": {"$lt": cutoff}})
+
+
+def get_history(zipcode: str, days: int = 14) -> list[dict]:
+    """Return weather history records for the past `days` days, oldest first."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cursor = _history_col().find(
+        {"zipcode": zipcode, "recorded_at": {"$gte": cutoff}},
+        {"_id": 0},
+    ).sort("recorded_at", ASCENDING)
+    return list(cursor)

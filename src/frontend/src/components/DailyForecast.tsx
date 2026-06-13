@@ -1,6 +1,7 @@
 import React from 'react';
 import { HourlyEntry } from '../types/weather';
 import { useWeather } from '../contexts/WeatherContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { getWeatherEmoji } from '../utils/weatherHelpers';
 
 interface PeriodSummary {
@@ -13,12 +14,14 @@ interface PeriodSummary {
 
 const DailyForecast: React.FC = () => {
   const { weatherData, isLoading } = useWeather();
+  const { language } = useLanguage();
+  const de = language === 'de';
 
   if (isLoading) {
     return (
       <div className="wf-empty">
         <div className="wf-empty-icon wf-pulse">⏳</div>
-        <div className="wf-empty-label">Lade Wetterdaten…</div>
+        <div className="wf-empty-label">{de ? 'Lade Wetterdaten…' : 'Loading weather…'}</div>
       </div>
     );
   }
@@ -27,7 +30,7 @@ const DailyForecast: React.FC = () => {
     return (
       <div className="wf-empty">
         <div className="wf-empty-icon">📊</div>
-        <div className="wf-empty-label">Keine Daten verfügbar</div>
+        <div className="wf-empty-label">{de ? 'Keine Daten verfügbar' : 'No data available'}</div>
       </div>
     );
   }
@@ -58,12 +61,19 @@ const DailyForecast: React.FC = () => {
     };
   };
 
-  const periods = [
-    { label: 'Morgens', time: '06–12', data: getPeriod(6, 12) },
-    { label: 'Mittags', time: '12–18', data: getPeriod(12, 18) },
-    { label: 'Abends',  time: '18–22', data: getPeriod(18, 22) },
-    { label: 'Nachts',  time: '22–06', data: getPeriod(22, 6) },
-  ];
+  const periods = de
+    ? [
+        { label: 'Morgens', time: '06–12', data: getPeriod(6, 12) },
+        { label: 'Mittags', time: '12–18', data: getPeriod(12, 18) },
+        { label: 'Abends',  time: '18–22', data: getPeriod(18, 22) },
+        { label: 'Nachts',  time: '22–06', data: getPeriod(22, 6) },
+      ]
+    : [
+        { label: 'Morning',   time: '06–12', data: getPeriod(6, 12) },
+        { label: 'Afternoon', time: '12–18', data: getPeriod(12, 18) },
+        { label: 'Evening',   time: '18–22', data: getPeriod(18, 22) },
+        { label: 'Night',     time: '22–06', data: getPeriod(22, 6) },
+      ];
 
   return (
     <div className="wf-period-grid">
@@ -72,9 +82,11 @@ const DailyForecast: React.FC = () => {
           return (
             <div key={label} className="wf-period-card">
               <div className="wf-period-label">{label}</div>
-              <div className="wf-period-time">{time} Uhr</div>
+              <div className="wf-period-time">{time}</div>
               <span className="wf-period-emoji">—</span>
-              <div style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Keine Daten</div>
+              <div style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
+                {de ? 'Keine Daten' : 'No data'}
+              </div>
             </div>
           );
         }
@@ -83,10 +95,10 @@ const DailyForecast: React.FC = () => {
         return (
           <div key={label} className="wf-period-card">
             <div className="wf-period-label">{label}</div>
-            <div className="wf-period-time">{time} Uhr</div>
+            <div className="wf-period-time">{time}</div>
             <span className="wf-period-emoji">{emoji}</span>
             <div className="wf-period-temp">{data.temperature}°</div>
-            <div className="wf-period-feels">Gefühlt {data.feelsLike}°</div>
+            <div className="wf-period-feels">{de ? 'Gefühlt' : 'Feels'} {data.feelsLike}°</div>
             <div className="wf-period-meta">
               <span>💧{data.humidity}%</span>
               <span>☔{data.precipPercent}%</span>

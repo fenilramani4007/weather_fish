@@ -9,7 +9,7 @@ from database import mongo
 from ai import text_generation, tts, context_engine
 
 PRESENTERS = ["Merkel", "Haftbefehl", "Fisch"]
-REPORT_TTL_MINUTES = 60  # skip Gemini if report is newer than this
+REPORT_TTL_MINUTES = 20  # skip Gemini if report is newer than this
 
 
 def get_all_weather_data(
@@ -74,6 +74,18 @@ def get_all_weather_data(
             print(f"[MongoDB] Weather saved for {postcode} ({city_name})")
         except Exception as exc:
             print(f"[MongoDB] WARNING: could not save weather — {exc}")
+
+        # Append to history log (always inserts, keeps trend data)
+        try:
+            mongo.append_history(
+                zipcode=postcode,
+                city=city_name,
+                current=structured["current"],
+                daily_weekone=structured["daily_weekone"],
+            )
+            print(f"[MongoDB] History appended for {postcode}")
+        except Exception as exc:
+            print(f"[MongoDB] WARNING: could not append history — {exc}")
 
         # Compute context from the first valid location only
         if primary_context is None:

@@ -231,6 +231,19 @@ def schedule_status():
     }
 
 
+# ── GET /api/history/{zipcode} ───────────────────────────────────────────────
+
+@app.get("/api/history/{zipcode}")
+def get_history(zipcode: str, days: int = 14):
+    """Return weather history records for a location (last N days, default 14)."""
+    days = max(1, min(days, 90))
+    records = mongo.get_history(zipcode, days)
+    for r in records:
+        if "recorded_at" in r and hasattr(r["recorded_at"], "isoformat"):
+            r["recorded_at"] = r["recorded_at"].isoformat()
+    return {"zipcode": zipcode, "days": days, "count": len(records), "records": records}
+
+
 # ── POST /api/chat ───────────────────────────────────────────────────────────
 
 @app.post("/api/chat")

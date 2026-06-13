@@ -11,6 +11,7 @@ Pipeline position:
 import os
 import time
 import random
+from datetime import datetime, timezone
 
 from google import genai
 from google.genai.errors import ClientError
@@ -94,6 +95,27 @@ def prompt(
 
 # ── Prompt builder ────────────────────────────────────────────────────────────
 
+# Variation seeds — injected randomly so each generation has a different feel
+_VARIATION_OPENERS = [
+    "Open with a vivid sensory detail — what it feels like to step outside right now.",
+    "Begin with an observation about the quality of light or sky at this moment.",
+    "Start with how this weather connects to the current season or time of year.",
+    "Open with what this weather means for the morning commute or start of the day.",
+    "Begin by naming the most striking aspect of today's weather conditions.",
+    "Start with a brief but evocative comparison: 'Today feels like…'",
+    "Open by addressing the listener directly — what should they expect today?",
+]
+
+_VARIATION_FOCUS = [
+    "Give special attention to how the temperature will evolve through the day.",
+    "Focus on the rain outlook and exactly when people should plan around it.",
+    "Highlight the wind and how it changes the real-feel temperature.",
+    "Emphasize the humidity and comfort level throughout the day.",
+    "Contrast this with what yesterday felt like or what is typical for this time of year.",
+    "Focus on practical advice: dress code, whether to carry an umbrella, outdoor plans.",
+    "Pay extra attention to the evening and night forecast for those planning outings.",
+]
+
 _PERSONA = {
     "Fisch": (
         "You are 'Fisch' — a cheerful, warm-hearted fish mascot who loves weather. "
@@ -163,6 +185,12 @@ def _build_prompt(
             "Weave in a natural tip about how today's or tomorrow's weather affects "
             "one of these activities — don't just list them."
         )
+
+    # Variation seed — prevents identical outputs across generations
+    parts.append(
+        f"Variation instruction: {random.choice(_VARIATION_OPENERS)} "
+        f"Also: {random.choice(_VARIATION_FOCUS)}"
+    )
 
     # Language
     parts.append(
