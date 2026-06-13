@@ -5,6 +5,7 @@ import SavedLocations from './SavedLocations';
 import CurrentWeather from './CurrentWeather';
 import TextReport from './TextReport';
 import WeatherVisuals from './WeatherVisuals';
+import ChatWidget from './ChatWidget';
 
 const Layout: React.FC = () => (
   <div className="wf-app">
@@ -24,6 +25,7 @@ const Layout: React.FC = () => (
         <WeatherVisuals />
       </main>
     </div>
+    <ChatWidget />
   </div>
 );
 

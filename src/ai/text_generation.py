@@ -94,6 +94,26 @@ def prompt(
 
 # ── Prompt builder ────────────────────────────────────────────────────────────
 
+_PERSONA = {
+    "Fisch": (
+        "You are 'Fisch' — a cheerful, warm-hearted fish mascot who loves weather. "
+        "Your tone is friendly, witty, and occasionally uses subtle fish-themed humour. "
+        "You feel like a trusted neighbourhood forecaster who always finds the bright side."
+    ),
+    "Merkel": (
+        "You are 'Merkel' — deliver the report in the composed, measured style of Angela Merkel. "
+        "Be clear, authoritative, and precise. You are reassuring and data-driven, "
+        "with an occasional touch of dry German wit. Every word counts."
+    ),
+    "Haftbefehl": (
+        "You are 'Haftbefehl' — a street-smart German rapper from Offenbach. "
+        "Your delivery is punchy, energetic, and uses some urban slang naturally. "
+        "You still give accurate information but with swagger, rhythm, and attitude. "
+        "Keep it real, keep it moving."
+    ),
+}
+
+
 def _build_prompt(
     data:     dict,
     person:   str,
@@ -103,40 +123,61 @@ def _build_prompt(
 ) -> str:
     parts: list[str] = []
 
+    # Persona instruction — comes first so it frames everything
+    persona = _PERSONA.get(person, f"Write in the distinctive style of {person}.")
+    parts.append(persona)
+
+    # Weather data
     parts.append(
-        "I have weather data for several cities as JSON. "
-        f"Here is the data (format is zipcode_cityname — use the city name): {data}."
+        "Generate a spoken weather narration report using this structured data "
+        "(key format is zipcode_cityname — always use the city name, never the ZIP code): "
+        f"{data}."
     )
 
+    # Context-aware tone and highlights
     if context:
         parts.append(
-            f"Current weather context: "
-            f"severity='{context['severity']}', "
+            f"Situation: severity='{context['severity']}', "
             f"time of day='{context['time_of_day']}', "
             f"temperature feels '{context['temperature_feel']}'. "
-            f"Adopt a {context['tone']}."
+            f"Adopt this tone: {context['tone']}."
         )
         if context.get("highlights"):
-            joined = "; ".join(context["highlights"])
-            parts.append(f"Key highlights to naturally weave into the report: {joined}.")
+            parts.append(
+                "Naturally weave these highlights into your narration: "
+                + "; ".join(context["highlights"]) + "."
+            )
 
-    if hobbies:
-        parts.append(
-            f"The report is personalised for someone who enjoys: {', '.join(hobbies)}. "
-            f"Briefly mention how today's weather affects at least one of these activities."
-        )
-
+    # Forecast instruction
     parts.append(
-        f"The ISO 639 language code is '{language}'. Write the entire report in that language."
+        "Use the 'hourly' data to briefly describe how today unfolds "
+        "(morning → afternoon → evening — do not list every hour). "
+        "Use 'daily_weekone' to mention what is coming over the next 1–2 days "
+        "(e.g. 'tomorrow brings…'). Do not recite raw numbers — narrate like a broadcaster."
     )
 
-    if person:
-        parts.append(f"Write in the distinctive style of {person}.")
+    # Personalisation
+    if hobbies:
+        parts.append(
+            f"This report is personalised for someone who loves: {', '.join(hobbies)}. "
+            "Weave in a natural tip about how today's or tomorrow's weather affects "
+            "one of these activities — don't just list them."
+        )
 
+    # Language
     parts.append(
-        "Output rules: fully written prose only — absolutely no bullet points or headings. "
-        "Start the report immediately without acknowledging this prompt. "
-        "Exactly 5 sentences total: one engaging introduction, then one sentence per city."
+        f"Write the entire report in the language with ISO 639-1 code '{language}'. "
+        "No code-switching, no translation notes."
+    )
+
+    # Output format
+    parts.append(
+        "Format rules: "
+        "flowing prose only — no bullet points, no headings, no numbered lists. "
+        "Begin directly with the report (no 'Here is…' or acknowledgement). "
+        "Length: 6–8 sentences. "
+        "Structure: engaging opener → current conditions per city → "
+        "today's evolving outlook → 1–2 day forecast → closing activity/lifestyle tip."
     )
 
     return " ".join(parts)

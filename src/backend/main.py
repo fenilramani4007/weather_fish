@@ -14,6 +14,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from backend import api
 from database import mongo
+from ai import chat as ai_chat
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
@@ -228,6 +229,32 @@ def schedule_status():
         "last_run":    _last_scheduled_run.isoformat() if _last_scheduled_run else None,
         "last_status": _last_scheduled_status,
     }
+
+
+# ── POST /api/chat ───────────────────────────────────────────────────────────
+
+@app.post("/api/chat")
+async def chat_endpoint(request: Request):
+    """AI weather assistant — context-grounded conversational replies."""
+    try:
+        payload  = await request.json()
+        message  = payload.get("message", "").strip()
+        zipcode  = payload.get("zipcode", "")
+        history  = payload.get("history", [])
+        language = payload.get("language", "de")
+
+        if not message:
+            raise HTTPException(status_code=400, detail="message is required")
+
+        weather_ctx = mongo.get_weather(zipcode) if zipcode else None
+        reply = ai_chat.reply(message, history, weather_ctx, language)
+        return {"reply": reply}
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        print(f"[Chat] endpoint error: {exc}")
+        return {"reply": "Entschuldigung, ein Fehler ist aufgetreten."}
 
 
 # ── GET /speech/{filename} ────────────────────────────────────────────────────
