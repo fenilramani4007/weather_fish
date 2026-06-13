@@ -8,6 +8,7 @@ Falls back through multiple model tiers on quota exhaustion.
 
 import os
 from google import genai
+from google.genai import types as genai_types
 from google.genai.errors import ClientError
 
 _client: genai.Client | None = None
@@ -65,10 +66,13 @@ def reply(
     # Try each model in the fallback chain
     for model in _CHAT_MODELS:
         try:
+            cfg = genai_types.GenerateContentConfig(
+                system_instruction=system_prompt,
+            )
             response = _get_client().models.generate_content(
                 model=model,
                 contents=contents,
-                config={"system_instruction": system_prompt},
+                config=cfg,
             )
             text = (response.text or "").strip()
             if text:
@@ -80,8 +84,25 @@ def reply(
             if code == 429:
                 continue   # quota — try next model
             break          # other client error — stop trying
-        except RuntimeError as exc:
-            print(f"[Chat] RuntimeError: {exc}")
+        except (RuntimeError, AttributeError) as exc:
+            # GenerateContentConfig may not exist in older SDK — fall back to inline injection
+            print(f"[Chat] Config not supported ({exc}), retrying with inline system prompt")
+            try:
+                inline_contents = list(contents)
+                inline_contents[0] = {
+                    "role": inline_contents[0]["role"],
+                    "parts": [{"text": system_prompt + "\n\n" + inline_contents[0]["parts"][0]["text"]}],
+                }
+                response = _get_client().models.generate_content(
+                    model=model,
+                    contents=inline_contents,
+                )
+                text = (response.text or "").strip()
+                if text:
+                    print(f"[Chat] OK (inline) — model={model}")
+                    return text
+            except Exception as exc2:
+                print(f"[Chat] Inline fallback also failed on {model}: {exc2}")
             break
         except Exception as exc:
             print(f"[Chat] Unexpected error on {model}: {exc}")
