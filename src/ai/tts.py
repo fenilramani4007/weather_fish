@@ -44,9 +44,7 @@ def generate_mp3(language_code: str, text: str, person: str) -> None:
     output_path = os.path.join(SPEECH_DIR, f"{person}.mp3")
 
     try:
-        # Create a fresh event loop to avoid conflicts with FastAPI's async loop
         loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
         loop.run_until_complete(_generate_async(text, voice, output_path))
         loop.close()
         print(f"[TTS] {person} -> {voice} -> {output_path}")

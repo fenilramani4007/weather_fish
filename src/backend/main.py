@@ -61,7 +61,7 @@ def _scheduled_generation():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if mongo.ping():
-        print("[MongoDB] Connected to", mongo.MONGODB_URI)
+        print("[MongoDB] Connected to", mongo._masked_uri(mongo.MONGODB_URI))
     else:
         print("[MongoDB] WARNING: cannot reach MongoDB")
 
@@ -200,7 +200,7 @@ def get_status():
     return {
         "status":      "ok",
         "mongodb":     "connected" if db_ok else "unreachable",
-        "mongodb_uri": mongo.MONGODB_URI,
+        "mongodb_uri": mongo._masked_uri(mongo.MONGODB_URI),
         "snapshots":   len(mongo.get_all_weather())    if db_ok else None,
         "reports":     len(mongo.get_all_reports())    if db_ok else None,
         "locations":   len(mongo.get_all_locations())  if db_ok else None,

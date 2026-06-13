@@ -23,12 +23,14 @@ src/frontend/.vite/
 *.tsbuildinfo
 
 # ── Runtime-generated files ───────────────────────────────────────────────────
-# TTS audio files — generated at runtime, not part of source
+# TTS audio — generated at runtime
 src/frontend/public/speech/*.mp3
 speech/*.mp3
 
-# Local weather data cache — production uses MongoDB instead
+# Weather JSON written by io.py — production reads from MongoDB instead
 src/database/weather_data/*.json
+src/frontend/public/structured_data/
+src/frontend/public/weather_text_from_gpt/
 
 # ── OS / Editor ───────────────────────────────────────────────────────────────
 .DS_Store

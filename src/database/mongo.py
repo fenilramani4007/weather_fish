@@ -17,6 +17,19 @@ from pymongo.collection import Collection
 MONGODB_URI = os.environ.get("MONGODB_URI", "mongodb://localhost:27017")
 DB_NAME = "weatherfish"
 
+
+def _masked_uri(uri: str) -> str:
+    """Return the URI with the password replaced by ***."""
+    try:
+        from urllib.parse import urlparse, urlunparse
+        p = urlparse(uri)
+        if p.password:
+            netloc = p.netloc.replace(f":{p.password}@", ":***@")
+            return urlunparse(p._replace(netloc=netloc))
+    except Exception:
+        pass
+    return uri
+
 _client: MongoClient | None = None
 
 
