@@ -10,7 +10,8 @@ const ALL_HOBBIES = [
   'Radfahren', 'Tennis', 'Wandern', 'Schwimmen', 'Joggen',
   'Gaming', 'Lesen', 'Kochen', 'Gärtnern', 'Fotografie',
 ];
-const HOBBIES_KEY   = 'wf_hobbies';
+const HOBBIES_KEY  = 'wf_hobbies';
+const LANG_KEY     = 'wf_lang';
 const POLL_INTERVAL = 5000;
 
 export default function WeatherSidebar() {
@@ -23,15 +24,18 @@ export default function WeatherSidebar() {
     triggerRefresh,
   } = useLocation();
 
-  const [newZip, setNewZip]         = useState('');
-  const [newCity, setNewCity]       = useState('');
+  const [newZip, setNewZip]           = useState('');
+  const [zipError, setZipError]       = useState('');
   const [postalCodes, setPostalCodes] = useState<PostalCodeEntry[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
-  const [status, setStatus]         = useState('');
-  const [hobbies, setHobbies]       = useState<string[]>(() => {
+  const [refreshing, setRefreshing]   = useState(false);
+  const [status, setStatus]           = useState('');
+  const [hobbies, setHobbies]         = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem(HOBBIES_KEY) ?? '[]'); }
     catch { return []; }
   });
+  const [language, setLanguage] = useState<'de' | 'en'>(() =>
+    (localStorage.getItem(LANG_KEY) as 'de' | 'en') ?? 'de'
+  );
   const [showHobbies, setShowHobbies] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -42,12 +46,14 @@ export default function WeatherSidebar() {
       .catch(console.error);
   }, []);
 
-  // Persist hobby selection
   useEffect(() => {
     localStorage.setItem(HOBBIES_KEY, JSON.stringify(hobbies));
   }, [hobbies]);
 
-  // Cleanup poll on unmount
+  useEffect(() => {
+    localStorage.setItem(LANG_KEY, language);
+  }, [language]);
+
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
 
   const toggleHobby = (h: string) =>
@@ -64,7 +70,7 @@ export default function WeatherSidebar() {
     fetch('/generate-documents', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cities, zipcodes, language: 'de', hobbies: activeHobbies }),
+      body: JSON.stringify({ cities, zipcodes, language, hobbies: activeHobbies }),
     })
       .then(r => r.json())
       .then(d => {
@@ -81,13 +87,14 @@ export default function WeatherSidebar() {
   };
 
   const handleAdd = () => {
-    const z = newZip.trim(), c = newCity.trim();
-    if (!z || !c) return;
-    if (savedLocations.length >= 4) { alert('Maximal 4 Standorte erlaubt.'); return; }
-    const match = postalCodes.find(e => e.plz === z && e.city.toLowerCase() === c.toLowerCase());
-    if (!match) { alert('Ungültige PLZ/Ort Kombination.'); return; }
+    const z = newZip.trim();
+    if (z.length !== 5) return;
+    if (savedLocations.length >= 4) { setZipError('Maximal 4 Standorte.'); return; }
+    const match = postalCodes.find(e => e.plz === z);
+    if (!match) { setZipError(`PLZ ${z} nicht gefunden.`); return; }
+    setZipError('');
     addLocation({ id: match.plz, name: `${match.plz} – ${match.city}`, lat: 0, lon: 0 });
-    setNewZip(''); setNewCity('');
+    setNewZip('');
     setRefreshing(true); setStatus('Generiert…');
     _startPolling();
     _runGeneration([match.city], [match.plz]);
@@ -110,21 +117,31 @@ export default function WeatherSidebar() {
 
       <div className="wf-form-row">
         <input
-          className="wf-input" style={{ width: '72px', flexShrink: 0 }}
-          placeholder="PLZ" value={newZip} maxLength={5}
-          onChange={e => { if (/^\d{0,5}$/.test(e.target.value)) setNewZip(e.target.value); }}
-          onKeyDown={e => e.key === 'Enter' && handleAdd()}
-        />
-        <input
           className="wf-input" style={{ flex: 1 }}
-          placeholder="Ort" value={newCity}
-          onChange={e => setNewCity(e.target.value)}
+          placeholder="PLZ (z.B. 92224)"
+          value={newZip} maxLength={5}
+          onChange={e => {
+            if (/^\d{0,5}$/.test(e.target.value)) {
+              setNewZip(e.target.value);
+              setZipError('');
+            }
+          }}
           onKeyDown={e => e.key === 'Enter' && handleAdd()}
         />
-        <button className="wf-btn-add" onClick={handleAdd} disabled={!newZip || !newCity || refreshing}>
+        <button
+          className="wf-btn-add"
+          onClick={handleAdd}
+          disabled={newZip.length !== 5 || refreshing}
+        >
           +
         </button>
       </div>
+
+      {zipError && (
+        <div style={{ fontSize: '10px', color: 'var(--red-de)', marginBottom: '4px' }}>
+          {zipError}
+        </div>
+      )}
 
       {Array.from({ length: 4 }).map((_, i) => {
         const loc = savedLocations[i];
@@ -145,6 +162,21 @@ export default function WeatherSidebar() {
           </div>
         );
       })}
+
+      {/* ── Language ── */}
+      <div className="wf-section mt">Sprache</div>
+      <div className="wf-form-row" style={{ gap: '6px' }}>
+        {(['de', 'en'] as const).map(lang => (
+          <button
+            key={lang}
+            className={`wf-hobby-chip ${language === lang ? 'on' : ''}`}
+            style={{ flex: 1, textTransform: 'uppercase', letterSpacing: '0.08em' }}
+            onClick={() => setLanguage(lang)}
+          >
+            {lang === 'de' ? '🇩🇪 Deutsch' : '🇬🇧 English'}
+          </button>
+        ))}
+      </div>
 
       {/* ── User Preferences ── */}
       <div

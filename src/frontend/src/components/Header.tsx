@@ -4,7 +4,9 @@ import { useLocation } from '../contexts/LocationContext';
 const Header: React.FC = () => {
   const { currentLocation } = useLocation();
 
-  const dateStr = new Date().toLocaleDateString('de-DE', {
+  const lang = (localStorage.getItem('wf_lang') ?? 'de').toUpperCase();
+
+  const dateStr = new Date().toLocaleDateString(lang === 'EN' ? 'en-GB' : 'de-DE', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -27,7 +29,7 @@ const Header: React.FC = () => {
         )}
       </div>
 
-      <div className="wf-header-badge">KI-WETTER · DE</div>
+      <div className="wf-header-badge">KI-WETTER · {lang}</div>
     </header>
   );
 };
