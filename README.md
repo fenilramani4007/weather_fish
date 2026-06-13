@@ -2,7 +2,7 @@
 title: Weather Fish
 emoji: 🐟
 colorFrom: blue
-colorTo: cyan
+colorTo: indigo
 sdk: docker
 pinned: false
 ---
