@@ -11,7 +11,15 @@ OPENWEATHER_API_KEY = os.environ["OPENWEATHER_API_KEY"]
 BASE_URL = "https://api.openweathermap.org/data/2.5"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CACHE_PATH = os.path.join(BASE_DIR, ".cache")
+
+# In production (SPEECH_DIR=/data/speech), put cache in /data/ so it survives restarts.
+# In dev, cache sits next to this file.
+_speech_dir = os.environ.get("SPEECH_DIR", "")
+CACHE_PATH = (
+    os.path.join(os.path.dirname(_speech_dir), "weather_cache")
+    if _speech_dir
+    else os.path.join(BASE_DIR, ".cache")
+)
 
 _session = requests_cache.CachedSession(CACHE_PATH, expire_after=3600)
 

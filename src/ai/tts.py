@@ -8,6 +8,7 @@ Voice reference: https://speech.microsoft.com/portal/voicegallery
 """
 
 import asyncio
+import concurrent.futures
 import os
 
 import edge_tts
@@ -33,21 +34,22 @@ def generate_mp3(language_code: str, text: str, person: str) -> None:
     """
     Generate an MP3 audio file from text using neural edge-tts.
 
-    Parameters
-    ----------
-    language_code : ISO 639 code (used as fallback if person has no mapping)
-    text          : full report text
-    person        : presenter name (Fisch | Merkel | Haftbefehl)
+    Runs in a dedicated thread so asyncio.run() gets a clean event loop,
+    avoiding conflicts with uvicorn's running loop.
     """
     voice       = PRESENTER_VOICES.get(person, DEFAULT_VOICE)
     os.makedirs(SPEECH_DIR, exist_ok=True)
     output_path = os.path.join(SPEECH_DIR, f"{person}.mp3")
 
+    def _run_in_thread():
+        asyncio.run(_generate_async(text, voice, output_path))
+
     try:
-        loop = asyncio.new_event_loop()
-        loop.run_until_complete(_generate_async(text, voice, output_path))
-        loop.close()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            executor.submit(_run_in_thread).result(timeout=60)
         print(f"[TTS] {person} -> {voice} -> {output_path}")
+    except concurrent.futures.TimeoutError:
+        print(f"[TTS] TIMEOUT for {person} after 60s")
     except Exception as exc:
         print(f"[TTS] ERROR for {person}: {exc}")
 

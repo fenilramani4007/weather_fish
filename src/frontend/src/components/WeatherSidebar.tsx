@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from '../contexts/LocationContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface PostalCodeEntry {
   plz: string;
@@ -10,8 +11,7 @@ const ALL_HOBBIES = [
   'Radfahren', 'Tennis', 'Wandern', 'Schwimmen', 'Joggen',
   'Gaming', 'Lesen', 'Kochen', 'Gärtnern', 'Fotografie',
 ];
-const HOBBIES_KEY  = 'wf_hobbies';
-const LANG_KEY     = 'wf_lang';
+const HOBBIES_KEY   = 'wf_hobbies';
 const POLL_INTERVAL = 5000;
 
 export default function WeatherSidebar() {
@@ -23,21 +23,23 @@ export default function WeatherSidebar() {
     removeLocation,
     triggerRefresh,
   } = useLocation();
+  const { language, setLanguage } = useLanguage();
 
-  const [newZip, setNewZip]           = useState('');
-  const [zipError, setZipError]       = useState('');
-  const [postalCodes, setPostalCodes] = useState<PostalCodeEntry[]>([]);
-  const [refreshing, setRefreshing]   = useState(false);
-  const [status, setStatus]           = useState('');
-  const [hobbies, setHobbies]         = useState<string[]>(() => {
+  const [searchQuery, setSearchQuery]     = useState('');
+  const [searchResults, setSearchResults] = useState<PostalCodeEntry[]>([]);
+  const [showDropdown, setShowDropdown]   = useState(false);
+  const [searchError, setSearchError]     = useState('');
+  const [postalCodes, setPostalCodes]     = useState<PostalCodeEntry[]>([]);
+  const [refreshing, setRefreshing]       = useState(false);
+  const [status, setStatus]               = useState('');
+  const [hobbies, setHobbies]             = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem(HOBBIES_KEY) ?? '[]'); }
     catch { return []; }
   });
-  const [language, setLanguage] = useState<'de' | 'en'>(() =>
-    (localStorage.getItem(LANG_KEY) as 'de' | 'en') ?? 'de'
-  );
   const [showHobbies, setShowHobbies] = useState(false);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const pollRef      = useRef<ReturnType<typeof setInterval> | null>(null);
+  const dropdownRef  = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch('/postal_codes/postal_codes.json')
@@ -50,11 +52,31 @@ export default function WeatherSidebar() {
     localStorage.setItem(HOBBIES_KEY, JSON.stringify(hobbies));
   }, [hobbies]);
 
-  useEffect(() => {
-    localStorage.setItem(LANG_KEY, language);
-  }, [language]);
-
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setSearchError('');
+    if (value.trim().length < 2) { setSearchResults([]); setShowDropdown(false); return; }
+    const q = value.trim().toLowerCase();
+    const isDigits = /^\d+$/.test(q);
+    const results = postalCodes
+      .filter(e => isDigits ? e.plz.startsWith(q) : e.city.toLowerCase().includes(q))
+      .slice(0, 8);
+    setSearchResults(results);
+    setShowDropdown(results.length > 0);
+  };
 
   const toggleHobby = (h: string) =>
     setHobbies(prev => prev.includes(h) ? prev.filter(x => x !== h) : [...prev, h]);
@@ -86,18 +108,19 @@ export default function WeatherSidebar() {
       });
   };
 
-  const handleAdd = () => {
-    const z = newZip.trim();
-    if (z.length !== 5) return;
-    if (savedLocations.length >= 4) { setZipError('Maximal 4 Standorte.'); return; }
-    const match = postalCodes.find(e => e.plz === z);
-    if (!match) { setZipError(`PLZ ${z} nicht gefunden.`); return; }
-    setZipError('');
-    addLocation({ id: match.plz, name: `${match.plz} – ${match.city}`, lat: 0, lon: 0 });
-    setNewZip('');
+  const handleSelect = (entry: PostalCodeEntry) => {
+    setSearchQuery('');
+    setSearchResults([]);
+    setShowDropdown(false);
+    setSearchError('');
+    if (savedLocations.length >= 4) { setSearchError('Maximal 4 Standorte.'); return; }
+    if (savedLocations.some(l => l.id === entry.plz)) {
+      setSearchError(`${entry.city} bereits hinzugefügt.`); return;
+    }
+    addLocation({ id: entry.plz, name: `${entry.plz} – ${entry.city}`, lat: 0, lon: 0 });
     setRefreshing(true); setStatus('Generiert…');
     _startPolling();
-    _runGeneration([match.city], [match.plz]);
+    _runGeneration([entry.city], [entry.plz]);
   };
 
   const handleRefreshAll = () => {
@@ -115,31 +138,49 @@ export default function WeatherSidebar() {
       {/* ── Locations ── */}
       <div className="wf-section" style={{ marginTop: 0 }}>Standorte</div>
 
-      <div className="wf-form-row">
-        <input
-          className="wf-input" style={{ flex: 1 }}
-          placeholder="PLZ (z.B. 92224)"
-          value={newZip} maxLength={5}
-          onChange={e => {
-            if (/^\d{0,5}$/.test(e.target.value)) {
-              setNewZip(e.target.value);
-              setZipError('');
-            }
-          }}
-          onKeyDown={e => e.key === 'Enter' && handleAdd()}
-        />
-        <button
-          className="wf-btn-add"
-          onClick={handleAdd}
-          disabled={newZip.length !== 5 || refreshing}
-        >
-          +
-        </button>
+      <div ref={dropdownRef} style={{ position: 'relative' }}>
+        <div className="wf-form-row">
+          <input
+            className="wf-input"
+            style={{ flex: 1 }}
+            placeholder="PLZ oder Stadt…"
+            value={searchQuery}
+            onChange={e => handleSearchChange(e.target.value)}
+            onFocus={() => searchResults.length > 0 && setShowDropdown(true)}
+            disabled={refreshing}
+          />
+        </div>
+
+        {showDropdown && (
+          <div style={{
+            position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
+            background: 'var(--card-bg, #1a1a2e)', border: '1px solid var(--border)',
+            borderRadius: '6px', boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+            maxHeight: '200px', overflowY: 'auto',
+          }}>
+            {searchResults.map(e => (
+              <div
+                key={e.plz}
+                onClick={() => handleSelect(e)}
+                style={{
+                  padding: '8px 12px', cursor: 'pointer', fontSize: '12px',
+                  borderBottom: '1px solid var(--border)',
+                  display: 'flex', justifyContent: 'space-between',
+                }}
+                onMouseEnter={ev => (ev.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                onMouseLeave={ev => (ev.currentTarget.style.background = 'transparent')}
+              >
+                <span style={{ color: 'var(--text-main, #eee)' }}>{e.city}</span>
+                <span style={{ color: 'var(--text-muted, #888)', marginLeft: '8px' }}>{e.plz}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {zipError && (
-        <div style={{ fontSize: '10px', color: 'var(--red-de)', marginBottom: '4px' }}>
-          {zipError}
+      {searchError && (
+        <div style={{ fontSize: '10px', color: 'var(--red-de)', marginTop: '4px' }}>
+          {searchError}
         </div>
       )}
 
@@ -178,7 +219,7 @@ export default function WeatherSidebar() {
         ))}
       </div>
 
-      {/* ── User Preferences ── */}
+      {/* ── Interests ── */}
       <div
         className="wf-section mt"
         style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
@@ -224,7 +265,7 @@ export default function WeatherSidebar() {
         </>
       )}
 
-      {/* ── System info ── */}
+      {/* ── System ── */}
       <div className="wf-sys-block">
         <div className="wf-section" style={{ marginBottom: '8px' }}>System</div>
         <div className="wf-sys-line">API &nbsp;· OpenWeather</div>

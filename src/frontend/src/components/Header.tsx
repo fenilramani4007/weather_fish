@@ -1,12 +1,12 @@
 import React from 'react';
 import { useLocation } from '../contexts/LocationContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const Header: React.FC = () => {
   const { currentLocation } = useLocation();
+  const { language } = useLanguage();
 
-  const lang = (localStorage.getItem('wf_lang') ?? 'de').toUpperCase();
-
-  const dateStr = new Date().toLocaleDateString(lang === 'EN' ? 'en-GB' : 'de-DE', {
+  const dateStr = new Date().toLocaleDateString(language === 'en' ? 'en-GB' : 'de-DE', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -29,7 +29,7 @@ const Header: React.FC = () => {
         )}
       </div>
 
-      <div className="wf-header-badge">KI-WETTER · {lang}</div>
+      <div className="wf-header-badge">KI-WETTER · {language.toUpperCase()}</div>
     </header>
   );
 };
