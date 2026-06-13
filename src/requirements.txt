@@ -1,0 +1,23 @@
+# Server
+fastapi
+uvicorn[standard]
+python-dotenv
+
+# Database — MongoDB
+pymongo==4.7.3
+
+# Weather data — OpenWeather API
+requests==2.32.3
+requests-cache==1.2.1
+pandas==2.2.3
+
+# Geocoding — OpenWeather Geo API (built-in, no extra package needed)
+
+# AI — Text generation (Gemini)
+google-genai==2.8.0
+
+# Scheduling — hourly auto-generation
+apscheduler==3.10.4
+
+# TTS — neural voice synthesis (Microsoft Edge TTS)
+edge-tts

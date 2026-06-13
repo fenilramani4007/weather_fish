@@ -1,0 +1,110 @@
+{
+    "current": {
+        "temperature": 10,
+        "feels like": 10,
+        "humidity": 94,
+        "current_precipitation": "",
+        "overcast": "cloudy"
+    },
+    "hourly": {
+        "0": {
+            "temperature": 11,
+            "feels like": 11,
+            "humidity": 93,
+            "precipitation probability": 26,
+            "overcast": "cloudy"
+        },
+        "3": {
+            "temperature": 12,
+            "feels like": 11,
+            "humidity": 93,
+            "precipitation probability": 0,
+            "overcast": "cloudy"
+        },
+        "6": {
+            "temperature": 13,
+            "feels like": 13,
+            "humidity": 93,
+            "precipitation probability": 0,
+            "overcast": "cloudy"
+        },
+        "9": {
+            "temperature": 13,
+            "feels like": 13,
+            "humidity": 94,
+            "precipitation probability": 0,
+            "overcast": "cloudy"
+        },
+        "12": {
+            "temperature": 16,
+            "feels like": 15,
+            "humidity": 84,
+            "precipitation probability": 0,
+            "overcast": "cloudy"
+        },
+        "15": {
+            "temperature": 18,
+            "feels like": 19,
+            "humidity": 90,
+            "precipitation probability": 100,
+            "overcast": "cloudy"
+        },
+        "18": {
+            "temperature": 18,
+            "feels like": 18,
+            "humidity": 73,
+            "precipitation probability": 100,
+            "overcast": "cloudy"
+        },
+        "21": {
+            "temperature": 15,
+            "feels like": 15,
+            "humidity": 89,
+            "precipitation probability": 0,
+            "overcast": "cloudy"
+        }
+    },
+    "daily_weekone": {
+        "2026-06-12": {
+            "maxtemp": 18,
+            "mintemp": 11,
+            "maxwindgusts": 38,
+            "maxwindspeed": 19,
+            "overcast": "cloudy",
+            "precipitation": "rain"
+        },
+        "2026-06-13": {
+            "maxtemp": 17,
+            "mintemp": 10,
+            "maxwindgusts": 51,
+            "maxwindspeed": 27,
+            "overcast": "cloudy",
+            "precipitation": "rain"
+        },
+        "2026-06-14": {
+            "maxtemp": 18,
+            "mintemp": 10,
+            "maxwindgusts": 46,
+            "maxwindspeed": 26,
+            "overcast": "cloudy",
+            "precipitation": "rain"
+        },
+        "2026-06-15": {
+            "maxtemp": 16,
+            "mintemp": 10,
+            "maxwindgusts": 41,
+            "maxwindspeed": 27,
+            "overcast": "cloudy",
+            "precipitation": "rain"
+        },
+        "2026-06-16": {
+            "maxtemp": 18,
+            "mintemp": 10,
+            "maxwindgusts": 35,
+            "maxwindspeed": 22,
+            "overcast": "cloudy",
+            "precipitation": ""
+        }
+    },
+    "daily_weektwo": {}
+}

@@ -1,0 +1,295 @@
+{
+    "current": {
+        "temperature": 27,
+        "humidity": 39,
+        "current_precipitation": "",
+        "feels like": 27,
+        "overcast": "clear"
+    },
+    "hourly": {
+        "19": {
+            "temperature": 24,
+            "humidity": 56,
+            "apparent_temperature": 25,
+            "precipitation probability": 0.0,
+            "overcast": "clear"
+        },
+        "20": {
+            "temperature": 23,
+            "humidity": 54,
+            "apparent_temperature": 23,
+            "precipitation probability": 0.0,
+            "overcast": "clear"
+        },
+        "21": {
+            "temperature": 20,
+            "humidity": 68,
+            "apparent_temperature": 21,
+            "precipitation probability": 0.0,
+            "overcast": "clear"
+        },
+        "22": {
+            "temperature": 19,
+            "humidity": 83,
+            "apparent_temperature": 20,
+            "precipitation probability": 0.0,
+            "overcast": "clear"
+        },
+        "23": {
+            "temperature": 18,
+            "humidity": 86,
+            "apparent_temperature": 19,
+            "precipitation probability": 0.0,
+            "overcast": "clear"
+        },
+        "0": {
+            "temperature": 17,
+            "humidity": 81,
+            "apparent_temperature": 17,
+            "precipitation probability": 0.0,
+            "overcast": "clear"
+        },
+        "1": {
+            "temperature": 16,
+            "humidity": 87,
+            "apparent_temperature": 17,
+            "precipitation probability": 0.0,
+            "overcast": "clear"
+        },
+        "2": {
+            "temperature": 16,
+            "humidity": 90,
+            "apparent_temperature": 16,
+            "precipitation probability": 0.0,
+            "overcast": "clear"
+        },
+        "3": {
+            "temperature": 15,
+            "humidity": 92,
+            "apparent_temperature": 16,
+            "precipitation probability": 0.0,
+            "overcast": "clear"
+        },
+        "4": {
+            "temperature": 15,
+            "humidity": 93,
+            "apparent_temperature": 16,
+            "precipitation probability": 0.0,
+            "overcast": "clear"
+        },
+        "5": {
+            "temperature": 16,
+            "humidity": 90,
+            "apparent_temperature": 17,
+            "precipitation probability": 0.0,
+            "overcast": "clear"
+        },
+        "6": {
+            "temperature": 19,
+            "humidity": 82,
+            "apparent_temperature": 21,
+            "precipitation probability": 0.0,
+            "overcast": "clear"
+        },
+        "7": {
+            "temperature": 22,
+            "humidity": 74,
+            "apparent_temperature": 24,
+            "precipitation probability": 0.0,
+            "overcast": "clear"
+        },
+        "8": {
+            "temperature": 24,
+            "humidity": 64,
+            "apparent_temperature": 26,
+            "precipitation probability": 0.0,
+            "overcast": "clear"
+        },
+        "9": {
+            "temperature": 26,
+            "humidity": 59,
+            "apparent_temperature": 29,
+            "precipitation probability": 0.0,
+            "overcast": "clear"
+        },
+        "10": {
+            "temperature": 27,
+            "humidity": 53,
+            "apparent_temperature": 31,
+            "precipitation probability": 0.0,
+            "overcast": "clear"
+        },
+        "11": {
+            "temperature": 29,
+            "humidity": 52,
+            "apparent_temperature": 33,
+            "precipitation probability": 0.0,
+            "overcast": "clear"
+        },
+        "12": {
+            "temperature": 30,
+            "humidity": 47,
+            "apparent_temperature": 33,
+            "precipitation probability": 0.0,
+            "overcast": "clear"
+        },
+        "13": {
+            "temperature": 31,
+            "humidity": 43,
+            "apparent_temperature": 34,
+            "precipitation probability": 0.0,
+            "overcast": "clear"
+        },
+        "14": {
+            "temperature": 31,
+            "humidity": 46,
+            "apparent_temperature": 34,
+            "precipitation probability": 0.0,
+            "overcast": "cloudy"
+        },
+        "15": {
+            "temperature": 31,
+            "humidity": 44,
+            "apparent_temperature": 33,
+            "precipitation probability": 0.0,
+            "overcast": "partly cloudy"
+        },
+        "16": {
+            "temperature": 30,
+            "humidity": 43,
+            "apparent_temperature": 31,
+            "precipitation probability": 0.0,
+            "overcast": "clear"
+        },
+        "17": {
+            "temperature": 30,
+            "humidity": 44,
+            "apparent_temperature": 30,
+            "precipitation probability": 0.0,
+            "overcast": "clear"
+        },
+        "18": {
+            "temperature": 28,
+            "humidity": 51,
+            "apparent_temperature": 29,
+            "precipitation probability": 0.0,
+            "overcast": "clear"
+        }
+    },
+    "daily_weekone": {
+        "2025-06-29": {
+            "maxtemp": 32,
+            "mintemp": 16,
+            "maxwindgusts": 30,
+            "maxwindspeed": 10,
+            "overcast": "cloudy",
+            "precipitation": "rain"
+        },
+        "2025-06-30": {
+            "maxtemp": 32,
+            "mintemp": 18,
+            "maxwindgusts": 31,
+            "maxwindspeed": 12,
+            "overcast": "partly cloudy",
+            "precipitation": "rain"
+        },
+        "2025-07-01": {
+            "maxtemp": 33,
+            "mintemp": 17,
+            "maxwindgusts": 46,
+            "maxwindspeed": 13,
+            "overcast": "partly cloudy",
+            "precipitation": ""
+        },
+        "2025-07-02": {
+            "maxtemp": 30,
+            "mintemp": 19,
+            "maxwindgusts": 48,
+            "maxwindspeed": 22,
+            "overcast": "cloudy",
+            "precipitation": "rain"
+        },
+        "2025-07-03": {
+            "maxtemp": 21,
+            "mintemp": 16,
+            "maxwindgusts": 37,
+            "maxwindspeed": 13,
+            "overcast": "cloudy",
+            "precipitation": "rain"
+        },
+        "2025-07-04": {
+            "maxtemp": 25,
+            "mintemp": 15,
+            "maxwindgusts": 27,
+            "maxwindspeed": 14,
+            "overcast": "cloudy",
+            "precipitation": ""
+        },
+        "2025-07-05": {
+            "maxtemp": 24,
+            "mintemp": 11,
+            "maxwindgusts": 18,
+            "maxwindspeed": 10,
+            "overcast": "partly cloudy",
+            "precipitation": ""
+        }
+    },
+    "daily_weektwo": {
+        "2025-07-06": {
+            "maxtemp": 24,
+            "mintemp": 11,
+            "maxwindgusts": 18,
+            "maxwindspeed": 10,
+            "overcast": "partly cloudy",
+            "precipitation": ""
+        },
+        "2025-07-07": {
+            "maxtemp": 25,
+            "mintemp": 10,
+            "maxwindgusts": 14,
+            "maxwindspeed": 7,
+            "overcast": "partly cloudy",
+            "precipitation": ""
+        },
+        "2025-07-08": {
+            "maxtemp": 25,
+            "mintemp": 12,
+            "maxwindgusts": 40,
+            "maxwindspeed": 21,
+            "overcast": "cloudy",
+            "precipitation": "rain"
+        },
+        "2025-07-09": {
+            "maxtemp": 21,
+            "mintemp": 8,
+            "maxwindgusts": 11,
+            "maxwindspeed": 8,
+            "overcast": "cloudy",
+            "precipitation": ""
+        },
+        "2025-07-10": {
+            "maxtemp": 24,
+            "mintemp": 11,
+            "maxwindgusts": 10,
+            "maxwindspeed": 8,
+            "overcast": "cloudy",
+            "precipitation": ""
+        },
+        "2025-07-11": {
+            "maxtemp": 24,
+            "mintemp": 11,
+            "maxwindgusts": 22,
+            "maxwindspeed": 13,
+            "overcast": "cloudy",
+            "precipitation": ""
+        },
+        "2025-07-12": {
+            "maxtemp": 26,
+            "mintemp": 10,
+            "maxwindgusts": 9,
+            "maxwindspeed": 7,
+            "overcast": "cloudy",
+            "precipitation": ""
+        }
+    }
+}
