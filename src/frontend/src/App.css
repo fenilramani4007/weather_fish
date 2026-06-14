@@ -1644,10 +1644,85 @@ body {
   .wf-page       { padding: 16px; }
 }
 
+/* ════════════════════════════════════════════════════════
+   HAMBURGER BUTTON — hidden on desktop, shown on mobile
+   ════════════════════════════════════════════════════════ */
+
+.wf-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  padding: 6px;
+  flex-shrink: 0;
+}
+
+.wf-hamburger span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: var(--text-sec);
+  transition: all 0.2s;
+}
+
+.wf-hamburger:hover span { background: var(--gold); }
+
+/* ════════════════════════════════════════════════════════
+   NAV BACKDROP — tap-outside-to-close on mobile
+   ════════════════════════════════════════════════════════ */
+
+.wf-nav-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 149;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+/* ════════════════════════════════════════════════════════
+   RESPONSIVE — MOBILE
+   ════════════════════════════════════════════════════════ */
+
 @media (max-width: 640px) {
-  .wf-nav          { display: none; }
-  .wf-chat-context { display: none; }
-  .wf-dash-grid    { grid-template-columns: 1fr; }
+  /* Show hamburger */
+  .wf-hamburger { display: flex; }
+
+  /* Nav becomes a fixed drawer */
+  .wf-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 150;
+    width: 220px;
+    min-width: 220px;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    padding-top: 56px;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Drawer open state */
+  .wf-nav.wf-nav--open {
+    transform: translateX(0);
+  }
+
+  /* Show backdrop when drawer is open */
+  .wf-nav.wf-nav--open ~ .wf-nav-backdrop,
+  .wf-nav-backdrop { display: block; }
+
+  /* Pages stack vertically */
+  .wf-chat-context  { display: none; }
+  .wf-dash-grid     { grid-template-columns: 1fr; }
   .wf-settings-grid { grid-template-columns: 1fr; }
-  .wf-page-header  { flex-direction: column; }
+  .wf-page-header   { flex-direction: column; }
+  .wf-report-presenter-bar { grid-template-columns: 1fr; }
+  .wf-forecast-layout { grid-template-columns: 1fr; }
+  .wf-page { padding: 14px; gap: 14px; }
 }

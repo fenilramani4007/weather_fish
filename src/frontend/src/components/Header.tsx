@@ -2,7 +2,9 @@ import React from 'react';
 import { useLocation } from '../contexts/LocationContext';
 import { useLanguage } from '../contexts/LanguageContext';
 
-const Header: React.FC = () => {
+interface HeaderProps { onHamburger: () => void; }
+
+const Header: React.FC<HeaderProps> = ({ onHamburger }) => {
   const { currentLocation } = useLocation();
   const { language } = useLanguage();
 
@@ -15,9 +17,14 @@ const Header: React.FC = () => {
 
   return (
     <header className="wf-header">
-      <div className="wf-logo">
-        <div className="wf-logo-dot" />
-        🐟 WEATHER-FISH
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <button className="wf-hamburger" onClick={onHamburger} aria-label="Menu">
+          <span /><span /><span />
+        </button>
+        <div className="wf-logo">
+          <div className="wf-logo-dot" />
+          🐟 WEATHER-FISH
+        </div>
       </div>
 
       <div className="wf-header-center">

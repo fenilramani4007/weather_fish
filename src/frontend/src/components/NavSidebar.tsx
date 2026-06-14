@@ -13,7 +13,9 @@ const NAV_ITEMS = [
   { path: '/settings',  icon: '⚙️', labelDE: 'Einstellungen', labelEN: 'Settings' },
 ];
 
-const NavSidebar: React.FC = () => {
+interface NavSidebarProps { isOpen: boolean; onClose: () => void; }
+
+const NavSidebar: React.FC<NavSidebarProps> = ({ isOpen, onClose }) => {
   const { currentLocation, savedLocations } = useLocation();
   const { language } = useLanguage();
   const { weatherData } = useWeather();
@@ -42,7 +44,7 @@ const NavSidebar: React.FC = () => {
   const emoji = cur ? getWeatherEmoji(cur.overcast, cur.current_precipitation) : '';
 
   return (
-    <nav className="wf-nav">
+    <nav className={`wf-nav${isOpen ? ' wf-nav--open' : ''}`}>
       {/* Navigation links */}
       <div className="wf-nav-links">
         {NAV_ITEMS.map(item => (
@@ -51,6 +53,7 @@ const NavSidebar: React.FC = () => {
             to={item.path}
             end={item.path === '/'}
             className={({ isActive }) => `wf-nav-link${isActive ? ' active' : ''}`}
+            onClick={onClose}
           >
             <span className="wf-nav-icon">{item.icon}</span>
             <span className="wf-nav-label">{de ? item.labelDE : item.labelEN}</span>
