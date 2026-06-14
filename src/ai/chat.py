@@ -9,11 +9,12 @@ import os
 from google import genai
 from google.genai.errors import ClientError
 
+# Most stable / current models first
 _CHAT_MODELS = [
-    "gemini-1.5-flash",
-    "gemini-1.5-flash-8b",
     "gemini-2.0-flash-lite",
     "gemini-2.0-flash",
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-8b",
 ]
 
 
@@ -25,67 +26,68 @@ def reply(
 ) -> str:
     """
     Return a chat reply grounded in the user's current weather data.
-    System context is injected into the first user message for maximum
-    SDK compatibility (no GenerateContentConfig dependency).
+    Uses a flat string prompt (single user turn) for maximum SDK compatibility.
     """
     key = os.environ.get("GEMINI_API_KEY", "")
     if not key:
-        print("[Chat] ERROR: GEMINI_API_KEY environment variable not set")
+        print("[Chat] ERROR: GEMINI_API_KEY not set")
         return _fallback(language)
 
     try:
         client = genai.Client(api_key=key)
     except Exception as exc:
-        print(f"[Chat] ERROR: failed to create Gemini client: {exc}")
+        print(f"[Chat] ERROR creating client: {exc}")
         return _fallback(language)
 
-    system_prompt = _build_system_prompt(weather_ctx, language)
-
-    # Build conversation — Gemini requires strictly alternating user/model roles
-    raw = [h for h in history[-10:] if h.get("role") in ("user", "model")]
-    # Drop any leading model turns
-    while raw and raw[0].get("role") == "model":
-        raw = raw[1:]
-
-    contents: list[dict] = [
-        {"role": h["role"], "parts": [{"text": h.get("text", "")}]}
-        for h in raw
-    ]
-
-    # Add current user message
-    contents.append({"role": "user", "parts": [{"text": message}]})
-
-    # Inject system context into the first user turn (most compatible approach)
-    for item in contents:
-        if item["role"] == "user":
-            item["parts"][0]["text"] = (
-                system_prompt + "\n\n---\n\n" + item["parts"][0]["text"]
-            )
-            break
+    # Build a flat text prompt — avoids multi-turn contents-list format issues
+    prompt = _build_prompt(message, history, weather_ctx, language)
 
     for model in _CHAT_MODELS:
         try:
-            response = client.models.generate_content(
-                model=model,
-                contents=contents,
-            )
-            text = (response.text or "").strip()
+            response = client.models.generate_content(model=model, contents=prompt)
+            try:
+                text = (response.text or "").strip()
+            except Exception:
+                text = ""
             if text:
                 print(f"[Chat] OK — model={model}")
                 return text
+            print(f"[Chat] Empty response from {model}, trying next")
         except ClientError as exc:
             code = getattr(exc, "code", None)
-            print(f"[Chat] ClientError on {model}: code={code}")
-            if code == 429:
-                continue   # rate limit — try next model
-            # Any other client error (invalid key, bad request): stop
-            print(f"[Chat] Non-retryable error: {exc}")
-            break
+            print(f"[Chat] ClientError on {model}: code={code} — {exc}")
+            if code == 401:
+                # Invalid API key — no point trying other models
+                break
+            # For 404 (model not found), 429 (rate limit), 500, etc. — try next model
+            continue
         except Exception as exc:
-            print(f"[Chat] Unexpected error on {model}: {exc}")
+            print(f"[Chat] Exception on {model}: {type(exc).__name__}: {exc}")
             continue
 
     return _fallback(language)
+
+
+def _build_prompt(
+    message: str,
+    history: list[dict],
+    weather_ctx: dict | None,
+    language: str,
+) -> str:
+    """Flat text prompt: system context + conversation history + current message."""
+    system = _build_system_prompt(weather_ctx, language)
+
+    parts = [system, "\n\nConversation so far:\n"]
+    for h in history[-8:]:
+        role = h.get("role", "")
+        text = h.get("text", "")
+        if role == "user":
+            parts.append(f"User: {text}\n")
+        elif role == "model":
+            parts.append(f"Assistant: {text}\n")
+
+    parts.append(f"\nUser: {message}\nAssistant:")
+    return "".join(parts)
 
 
 def _fallback(language: str) -> str:
