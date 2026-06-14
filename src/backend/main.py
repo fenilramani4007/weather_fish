@@ -244,6 +244,19 @@ def get_history(zipcode: str, days: int = 14):
     return {"zipcode": zipcode, "days": days, "count": len(records), "records": records}
 
 
+# ── GET /api/chat/debug ───────────────────────────────────────────────────────
+
+@app.get("/api/chat/debug")
+def chat_debug():
+    """Returns chat module internal state — helps diagnose API key / client issues."""
+    key = os.environ.get("GEMINI_API_KEY", "")
+    return {
+        "gemini_key_set":    bool(key),
+        "gemini_key_length": len(key),
+        "chat_client_ready": ai_chat._client is not None,
+    }
+
+
 # ── POST /api/chat ───────────────────────────────────────────────────────────
 
 @app.post("/api/chat")

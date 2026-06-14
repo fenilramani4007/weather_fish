@@ -2,14 +2,26 @@
 Chat — WEATHER-FISH
 ====================
 Conversational weather assistant powered by Gemini.
-Uses real-time MongoDB weather data as grounding context.
 """
 
 import os
 from google import genai
 from google.genai.errors import ClientError
 
-# Most stable / current models first
+# ── Module-level client — same pattern as text_generation.py ──────────────────
+# Created once at import time so any key/config issues surface at startup.
+_client: genai.Client | None = None
+try:
+    _key = os.environ.get("GEMINI_API_KEY", "")
+    if _key:
+        _client = genai.Client(api_key=_key)
+        print("[Chat] Gemini client ready")
+    else:
+        print("[Chat] WARNING: GEMINI_API_KEY not set — chat disabled")
+except Exception as _exc:
+    print(f"[Chat] WARNING: could not create Gemini client: {_exc}")
+
+# Most stable / available models first
 _CHAT_MODELS = [
     "gemini-2.0-flash-lite",
     "gemini-2.0-flash",
@@ -24,43 +36,31 @@ def reply(
     weather_ctx: dict | None,
     language: str = "de",
 ) -> str:
-    """
-    Return a chat reply grounded in the user's current weather data.
-    Uses a flat string prompt (single user turn) for maximum SDK compatibility.
-    """
-    key = os.environ.get("GEMINI_API_KEY", "")
-    if not key:
-        print("[Chat] ERROR: GEMINI_API_KEY not set")
+    if _client is None:
+        print("[Chat] reply() called but client is None — returning fallback")
         return _fallback(language)
 
-    try:
-        client = genai.Client(api_key=key)
-    except Exception as exc:
-        print(f"[Chat] ERROR creating client: {exc}")
-        return _fallback(language)
-
-    # Build a flat text prompt — avoids multi-turn contents-list format issues
     prompt = _build_prompt(message, history, weather_ctx, language)
 
     for model in _CHAT_MODELS:
         try:
-            response = client.models.generate_content(model=model, contents=prompt)
+            print(f"[Chat] Trying model={model}")
+            response = _client.models.generate_content(model=model, contents=prompt)
             try:
                 text = (response.text or "").strip()
-            except Exception:
+            except Exception as exc:
+                print(f"[Chat] response.text error on {model}: {exc}")
                 text = ""
             if text:
                 print(f"[Chat] OK — model={model}")
                 return text
-            print(f"[Chat] Empty response from {model}, trying next")
+            print(f"[Chat] Empty response from {model}")
         except ClientError as exc:
             code = getattr(exc, "code", None)
             print(f"[Chat] ClientError on {model}: code={code} — {exc}")
             if code == 401:
-                # Invalid API key — no point trying other models
-                break
-            # For 404 (model not found), 429 (rate limit), 500, etc. — try next model
-            continue
+                break  # invalid key — no point trying other models
+            continue   # 404 model not found, 429 rate limit, 500 → try next
         except Exception as exc:
             print(f"[Chat] Exception on {model}: {type(exc).__name__}: {exc}")
             continue
@@ -74,9 +74,7 @@ def _build_prompt(
     weather_ctx: dict | None,
     language: str,
 ) -> str:
-    """Flat text prompt: system context + conversation history + current message."""
     system = _build_system_prompt(weather_ctx, language)
-
     parts = [system, "\n\nConversation so far:\n"]
     for h in history[-8:]:
         role = h.get("role", "")
@@ -85,7 +83,6 @@ def _build_prompt(
             parts.append(f"User: {text}\n")
         elif role == "model":
             parts.append(f"Assistant: {text}\n")
-
     parts.append(f"\nUser: {message}\nAssistant:")
     return "".join(parts)
 
