@@ -19,12 +19,16 @@ from database import io
 
 client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
-# Model priority — falls back automatically on quota exhaustion
+# Model priority — broadest quota coverage
+# 2.5 and 2.0 have separate free-tier quota buckets
+# 1.5 models need versioned names (gemini-1.5-flash-001) for v1beta API
 MODELS = [
-    "gemini-1.5-flash",       # 1 500 req/day free (highest free quota)
-    "gemini-1.5-flash-8b",    # 1 500 req/day, faster/lighter
-    "gemini-2.0-flash-lite",  # separate quota bucket
-    "gemini-2.0-flash",       # original (200 req/day)
+    "gemini-2.5-flash-preview-05-20",  # newest, own quota bucket
+    "gemini-2.5-flash",                # 2.5 GA
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-1.5-flash-001",            # versioned (was: gemini-1.5-flash)
+    "gemini-1.5-flash-8b-001",         # versioned (was: gemini-1.5-flash-8b)
 ]
 
 MAX_RETRIES = 3
