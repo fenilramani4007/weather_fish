@@ -3,33 +3,18 @@ Chat — WEATHER-FISH
 ====================
 Conversational weather assistant powered by Gemini.
 Uses real-time MongoDB weather data as grounding context.
-Falls back through multiple model tiers on quota exhaustion.
 """
 
 import os
 from google import genai
-from google.genai import types as genai_types
 from google.genai.errors import ClientError
 
-_client: genai.Client | None = None
-
-# Model fallback chain — same pattern as text_generation.py
 _CHAT_MODELS = [
     "gemini-1.5-flash",
     "gemini-1.5-flash-8b",
     "gemini-2.0-flash-lite",
     "gemini-2.0-flash",
 ]
-
-
-def _get_client() -> genai.Client:
-    global _client
-    if _client is None:
-        key = os.environ.get("GEMINI_API_KEY", "")
-        if not key:
-            raise RuntimeError("GEMINI_API_KEY not set")
-        _client = genai.Client(api_key=key)
-    return _client
 
 
 def reply(
@@ -40,39 +25,49 @@ def reply(
 ) -> str:
     """
     Return a chat reply grounded in the user's current weather data.
-
-    Parameters
-    ----------
-    message     : latest user message
-    history     : list of {"role": "user"|"model", "text": str}
-    weather_ctx : MongoDB weather document for the selected location
-    language    : "de" or "en"
+    System context is injected into the first user message for maximum
+    SDK compatibility (no GenerateContentConfig dependency).
     """
+    key = os.environ.get("GEMINI_API_KEY", "")
+    if not key:
+        print("[Chat] ERROR: GEMINI_API_KEY environment variable not set")
+        return _fallback(language)
+
+    try:
+        client = genai.Client(api_key=key)
+    except Exception as exc:
+        print(f"[Chat] ERROR: failed to create Gemini client: {exc}")
+        return _fallback(language)
+
     system_prompt = _build_system_prompt(weather_ctx, language)
 
-    # Build conversation contents — Gemini requires alternating user/model
-    raw_history = [h for h in history[-10:] if h.get("role") in ("user", "model")]
+    # Build conversation — Gemini requires strictly alternating user/model roles
+    raw = [h for h in history[-10:] if h.get("role") in ("user", "model")]
+    # Drop any leading model turns
+    while raw and raw[0].get("role") == "model":
+        raw = raw[1:]
 
-    # Drop leading model turns — conversation must start with "user"
-    while raw_history and raw_history[0].get("role") == "model":
-        raw_history = raw_history[1:]
-
-    contents = [
+    contents: list[dict] = [
         {"role": h["role"], "parts": [{"text": h.get("text", "")}]}
-        for h in raw_history
+        for h in raw
     ]
+
+    # Add current user message
     contents.append({"role": "user", "parts": [{"text": message}]})
 
-    # Try each model in the fallback chain
+    # Inject system context into the first user turn (most compatible approach)
+    for item in contents:
+        if item["role"] == "user":
+            item["parts"][0]["text"] = (
+                system_prompt + "\n\n---\n\n" + item["parts"][0]["text"]
+            )
+            break
+
     for model in _CHAT_MODELS:
         try:
-            cfg = genai_types.GenerateContentConfig(
-                system_instruction=system_prompt,
-            )
-            response = _get_client().models.generate_content(
+            response = client.models.generate_content(
                 model=model,
                 contents=contents,
-                config=cfg,
             )
             text = (response.text or "").strip()
             if text:
@@ -80,34 +75,20 @@ def reply(
                 return text
         except ClientError as exc:
             code = getattr(exc, "code", None)
-            print(f"[Chat] ClientError on {model}: code={code} — {exc}")
+            print(f"[Chat] ClientError on {model}: code={code}")
             if code == 429:
-                continue   # quota — try next model
-            break          # other client error — stop trying
-        except (RuntimeError, AttributeError) as exc:
-            # GenerateContentConfig may not exist in older SDK — fall back to inline injection
-            print(f"[Chat] Config not supported ({exc}), retrying with inline system prompt")
-            try:
-                inline_contents = list(contents)
-                inline_contents[0] = {
-                    "role": inline_contents[0]["role"],
-                    "parts": [{"text": system_prompt + "\n\n" + inline_contents[0]["parts"][0]["text"]}],
-                }
-                response = _get_client().models.generate_content(
-                    model=model,
-                    contents=inline_contents,
-                )
-                text = (response.text or "").strip()
-                if text:
-                    print(f"[Chat] OK (inline) — model={model}")
-                    return text
-            except Exception as exc2:
-                print(f"[Chat] Inline fallback also failed on {model}: {exc2}")
+                continue   # rate limit — try next model
+            # Any other client error (invalid key, bad request): stop
+            print(f"[Chat] Non-retryable error: {exc}")
             break
         except Exception as exc:
             print(f"[Chat] Unexpected error on {model}: {exc}")
             continue
 
+    return _fallback(language)
+
+
+def _fallback(language: str) -> str:
     return (
         "Sorry, the weather assistant is temporarily unavailable. Please try again shortly."
         if language == "en"
@@ -119,14 +100,13 @@ def _build_system_prompt(weather_ctx: dict | None, language: str) -> str:
     lines = [
         "You are WEATHER-FISH Assistant — a smart, friendly weather companion. "
         "Answer weather-related questions clearly and conversationally. "
-        "Keep answers concise (2–4 sentences) unless the user explicitly asks for detail. "
+        "Keep answers concise (2–4 sentences) unless the user asks for detail. "
         "If asked something unrelated to weather, politely redirect to weather topics."
     ]
 
     if weather_ctx:
         city = weather_ctx.get("city", "the selected location")
         cur  = weather_ctx.get("current", {})
-
         lines.append(
             f"Current live weather for {city}: "
             f"temperature {cur.get('temperature')}°C "
@@ -137,7 +117,6 @@ def _build_system_prompt(weather_ctx: dict | None, language: str) -> str:
             f"wind: {cur.get('wind speed', 'unknown')} km/h."
         )
 
-        # Hourly range and rain hours
         hourly = weather_ctx.get("hourly", {})
         if hourly:
             temps = [
@@ -152,14 +131,13 @@ def _build_system_prompt(weather_ctx: dict | None, language: str) -> str:
             if temps:
                 lines.append(f"Today's temperature range: {min(temps)}–{max(temps)}°C.")
             if rain_hours:
-                hours_str = ", ".join(str(h) for h in sorted(rain_hours, key=int)[:4])
-                lines.append(f"Rain likely around hour(s): {hours_str}:00.")
+                hrs = ", ".join(str(h) for h in sorted(rain_hours, key=int)[:4])
+                lines.append(f"Rain likely around: {hrs}:00.")
             else:
                 lines.append("No significant rain expected today.")
 
-        # Tomorrow's forecast
         weekone = weather_ctx.get("daily_weekone", {})
-        days = list(weekone.items()) if weekone else []
+        days = list(weekone.items())
         if len(days) >= 2:
             d, data = days[1]
             lines.append(
@@ -167,11 +145,8 @@ def _build_system_prompt(weather_ctx: dict | None, language: str) -> str:
                 f"{data.get('overcast')}, wind up to {data.get('maxwindspeed')} km/h."
             )
 
-    # Language instruction
     lines.append(
-        "Respond ONLY in English. Do not switch languages."
-        if language == "en"
-        else "Antworte IMMER auf Deutsch. Kein Sprachwechsel."
+        "Respond ONLY in English." if language == "en"
+        else "Antworte IMMER auf Deutsch."
     )
-
     return " ".join(lines)

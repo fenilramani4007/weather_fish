@@ -1,31 +1,30 @@
 import React from 'react';
+import { Routes, Route } from 'react-router-dom';
 import Header from './Header';
-import WeatherSidebar from './WeatherSidebar';
-import SavedLocations from './SavedLocations';
-import CurrentWeather from './CurrentWeather';
-import TextReport from './TextReport';
-import WeatherVisuals from './WeatherVisuals';
-import ChatWidget from './ChatWidget';
+import NavSidebar from './NavSidebar';
+
+import DashboardPage  from '../pages/DashboardPage';
+import ReportsPage    from '../pages/ReportsPage';
+import ForecastPage   from '../pages/ForecastPage';
+import ChatPage       from '../pages/ChatPage';
+import SettingsPage   from '../pages/SettingsPage';
 
 const Layout: React.FC = () => (
   <div className="wf-app">
     <Header />
     <div className="wf-body">
-      <aside className="wf-sidebar">
-        <WeatherSidebar />
-        <SavedLocations />
-      </aside>
+      <NavSidebar />
       <main className="wf-main">
-        <div className="wf-hero-row">
-          <CurrentWeather />
-          <div className="wf-card" style={{ display: 'flex', flexDirection: 'column' }}>
-            <TextReport />
-          </div>
-        </div>
-        <WeatherVisuals />
+        <Routes>
+          <Route path="/"         element={<DashboardPage />} />
+          <Route path="/reports"  element={<ReportsPage />} />
+          <Route path="/forecast" element={<ForecastPage />} />
+          <Route path="/chat"     element={<ChatPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="*"         element={<DashboardPage />} />
+        </Routes>
       </main>
     </div>
-    <ChatWidget />
   </div>
 );
 
