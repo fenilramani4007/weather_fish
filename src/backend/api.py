@@ -1,5 +1,5 @@
-import time
 import warnings
+import concurrent.futures
 from datetime import datetime, timezone, timedelta
 
 from backend import geocoder
@@ -104,46 +104,64 @@ def get_all_weather_data(
             except Exception as exc:
                 print(f"[Context] WARNING: context engine failed — {exc}")
 
-    # ── AI text + audio — generate for every requested language ──────────────
+    # ── AI text + audio — all presenter×language combos in parallel ──────────
     active_languages = languages if languages else [language]
+    tasks = [(p, l) for l in active_languages for p in PRESENTERS]
 
-    for lang in active_languages:
-        print(f"[Pipeline] Generating reports in language={lang}")
-        for i, presenter in enumerate(PRESENTERS):
-            cached = _get_cached_report(presenter, zipcodes or cities, lang)
-            if cached:
-                text = cached
-                print(f"[Cache] Using cached {presenter}/{lang} (< {REPORT_TTL_MINUTES} min old)")
-            else:
-                text = text_generation.prompt(
-                    cities=cities,
-                    person=presenter,
-                    hobbies=hobbies,
-                    language=lang,
-                    zipcodes=zipcodes,
-                    context=primary_context,
-                )
-                try:
-                    mongo.upsert_report(
-                        presenter=presenter,
-                        text=text,
-                        zipcodes=zipcodes or [],
-                        cities=cities,
-                        language=lang,
-                    )
-                    print(f"[MongoDB] Report saved for {presenter}/{lang}")
-                except Exception as exc:
-                    print(f"[MongoDB] WARNING: could not save report — {exc}")
-
-            io.write_prompt_to_txt(text, presenter)
-            tts.generate_mp3(language_code=lang, text=text, person=presenter)
-
-            if i < len(PRESENTERS) - 1 and not cached:
-                print("Waiting 5 seconds before next Gemini request…")
-                time.sleep(5)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(tasks)) as executor:
+        futures = {
+            executor.submit(
+                _generate_one, p, l, cities, zipcodes, hobbies, primary_context
+            ): (p, l)
+            for p, l in tasks
+        }
+        for future in concurrent.futures.as_completed(futures):
+            p, l = futures[future]
+            try:
+                future.result()
+            except Exception as exc:
+                print(f"[Pipeline] WARNING: {p}/{l} failed — {exc}")
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _generate_one(
+    presenter: str,
+    lang: str,
+    cities: list,
+    zipcodes: list | None,
+    hobbies: list,
+    primary_context: dict | None,
+) -> None:
+    """Generate AI report + TTS for one presenter/language combo (runs in a thread)."""
+    cached = _get_cached_report(presenter, zipcodes or cities, lang)
+    if cached:
+        text = cached
+        print(f"[Cache] Using cached {presenter}/{lang} (< {REPORT_TTL_MINUTES} min old)")
+    else:
+        text = text_generation.prompt(
+            cities=cities,
+            person=presenter,
+            hobbies=hobbies,
+            language=lang,
+            zipcodes=zipcodes,
+            context=primary_context,
+        )
+        try:
+            mongo.upsert_report(
+                presenter=presenter,
+                text=text,
+                zipcodes=zipcodes or [],
+                cities=cities,
+                language=lang,
+            )
+            print(f"[MongoDB] Report saved for {presenter}/{lang}")
+        except Exception as exc:
+            print(f"[MongoDB] WARNING: could not save report — {exc}")
+
+    io.write_prompt_to_txt(text, presenter)
+    tts.generate_mp3(language_code=lang, text=text, person=presenter)
+
 
 def _get_cached_report(presenter: str, keys: list, language: str = "de") -> str | None:
     """Return cached report text if < REPORT_TTL_MINUTES old and same location set."""

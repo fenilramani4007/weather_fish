@@ -177,7 +177,7 @@ const ReportsPage: React.FC = () => {
             setGenerating(false);
             setGenStatus(de ? 'Zeitüberschreitung — bitte erneut versuchen.' : 'Timeout — please try again.');
           }
-        }, 4000);
+        }, 2000);
       })
       .catch(() => {
         setGenerating(false);
