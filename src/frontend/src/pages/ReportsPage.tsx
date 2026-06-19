@@ -55,6 +55,11 @@ function buildSuggestions(weatherData: ReturnType<typeof useWeather>['weatherDat
   return tips;
 }
 
+type LangKey = 'de' | 'en';
+type BilingualReports = Record<LangKey, Record<Presenter, string>>;
+
+const EMPTY_REPORTS: Record<Presenter, string> = { Fisch: '', Merkel: '', Haftbefehl: '' };
+
 const ReportsPage: React.FC = () => {
   const { savedLocations, currentLocation, triggerRefresh } = useLocation();
   const { language } = useLanguage();
@@ -62,13 +67,16 @@ const ReportsPage: React.FC = () => {
   const navigate = useNavigate();
   const de = language === 'de';
 
-  const [presenter, setPresenter]   = useState<Presenter>('Fisch');
-  const [reports, setReports]       = useState<Record<Presenter, string>>({ Fisch: '', Merkel: '', Haftbefehl: '' });
-  const [generating, setGenerating] = useState(false);
-  const [genStatus, setGenStatus]   = useState('');
-  const [autoPlay, setAutoPlay]     = useState(true);
-  const [isPlaying, setIsPlaying]   = useState(false);
-  const [hobbies, setHobbies]       = useState<string[]>(() => {
+  const [presenter, setPresenter]     = useState<Presenter>('Fisch');
+  // Separate report text for each language
+  const [reports, setReports]         = useState<BilingualReports>({ de: { ...EMPTY_REPORTS }, en: { ...EMPTY_REPORTS } });
+  // Which language is shown in the Reports page (independent of global UI lang)
+  const [reportLang, setReportLang]   = useState<LangKey>(language as LangKey);
+  const [generating, setGenerating]   = useState(false);
+  const [genStatus, setGenStatus]     = useState('');
+  const [autoPlay, setAutoPlay]       = useState(true);
+  const [isPlaying, setIsPlaying]     = useState(false);
+  const [hobbies, setHobbies]         = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem(HOBBIES_KEY) ?? '[]'); } catch { return []; }
   });
   const [showHobbies, setShowHobbies] = useState(false);
@@ -78,26 +86,37 @@ const ReportsPage: React.FC = () => {
 
   const suggestions = buildSuggestions(weatherData, language);
 
-  // Load all 3 presenter reports on mount / refresh
-  useEffect(() => {
-    if (!savedLocations.length) return;
-    const load = async () => {
-      const entries = await Promise.all(
-        (['Fisch', 'Merkel', 'Haftbefehl'] as Presenter[]).map(p =>
-          fetch(`/api/report/${p}`)
-            .then(r => r.ok ? r.json() : null)
-            .then(doc => [p, doc?.text ?? ''] as const)
-            .catch(() => [p, ''] as const)
+  // Load reports for both languages whenever location changes
+  const loadAllReports = async () => {
+    const PRESENTERS: Presenter[] = ['Fisch', 'Merkel', 'Haftbefehl'];
+    const [deEntries, enEntries] = await Promise.all(
+      (['de', 'en'] as LangKey[]).map(lang =>
+        Promise.all(
+          PRESENTERS.map(p =>
+            fetch(`/api/report/${p}?lang=${lang}`)
+              .then(r => r.ok ? r.json() : null)
+              .then(doc => [p, doc?.text ?? ''] as const)
+              .catch(() => [p, ''] as const)
+          )
         )
-      );
-      setReports(Object.fromEntries(entries) as Record<Presenter, string>);
-    };
-    load();
-  }, [savedLocations.length, language]);
+      )
+    );
+    setReports({
+      de: Object.fromEntries(deEntries) as Record<Presenter, string>,
+      en: Object.fromEntries(enEntries) as Record<Presenter, string>,
+    });
+  };
+
+  useEffect(() => {
+    if (currentLocation) loadAllReports();
+  }, [currentLocation?.id]);
+
+  // Sync report language when global language changes
+  useEffect(() => { setReportLang(language as LangKey); }, [language]);
 
   const playAudio = (p: Presenter) => {
     if (!audioRef.current) return;
-    audioRef.current.src = `/speech/${p}.mp3?t=${Date.now()}`;
+    audioRef.current.src = `/speech/${p}_${reportLang}.mp3?t=${Date.now()}`;
     audioRef.current.play()
       .then(() => setIsPlaying(true))
       .catch(e => { console.warn('[Audio]', e); setIsPlaying(false); });
@@ -109,19 +128,24 @@ const ReportsPage: React.FC = () => {
   };
 
   const handleGenerate = () => {
-    if (!savedLocations.length || generating) return;
+    if (!currentLocation || generating) return;
     stopAudio();
     setGenerating(true);
-    setGenStatus(de ? 'Generiert KI-Berichte…' : 'Generating AI reports…');
+    setGenStatus(de ? 'Generiert KI-Berichte (DE + EN)…' : 'Generating AI reports (DE + EN)…');
 
-    const cities   = savedLocations.map(l => l.name.split('–')[1]?.trim() || l.name);
-    const zipcodes = savedLocations.map(l => l.id);
+    // Only the selected/active city — not all saved locations
+    const city    = currentLocation.name.split('–')[1]?.trim() || currentLocation.name;
+    const zipcode = currentLocation.id;
     const activeHobbies = hobbies.length > 0 ? hobbies : ['Gaming', 'Tennis', 'Radfahren'];
 
     fetch('/generate-documents', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cities, zipcodes, language, hobbies: activeHobbies }),
+      body: JSON.stringify({
+        cities: [city], zipcodes: [zipcode],
+        languages: ['de', 'en'],   // generate both
+        hobbies: activeHobbies,
+      }),
     })
       .then(r => r.json())
       .then(d => {
@@ -130,32 +154,25 @@ const ReportsPage: React.FC = () => {
           setGenerating(false);
           return;
         }
-        // Poll every 4s until new report text appears
+        // Poll until a fresh report appears for the current presenter + lang
         let polls = 0;
         if (pollRef.current) clearInterval(pollRef.current);
         pollRef.current = setInterval(async () => {
           polls++;
           triggerRefresh();
           try {
-            const res = await fetch(`/api/report/${presenter}`);
+            const res = await fetch(`/api/report/${presenter}?lang=${reportLang}`);
             const doc = await res.json();
             if (doc?.text) {
-              setReports(prev => ({ ...prev, [presenter]: doc.text }));
-              // Also reload all
-              const all = await Promise.all(
-                (['Fisch','Merkel','Haftbefehl'] as Presenter[]).map(p =>
-                  fetch(`/api/report/${p}`).then(r => r.json()).then(d => [p, d?.text ?? ''] as const).catch(() => [p, ''] as const)
-                )
-              );
-              setReports(Object.fromEntries(all) as Record<Presenter, string>);
+              await loadAllReports();
               clearInterval(pollRef.current!);
               setGenerating(false);
-              setGenStatus(de ? '✅ Berichte aktualisiert!' : '✅ Reports updated!');
+              setGenStatus(de ? '✅ Berichte aktualisiert (DE + EN)!' : '✅ Reports updated (DE + EN)!');
               if (autoPlay) playAudio(presenter);
-              setTimeout(() => setGenStatus(''), 4000);
+              setTimeout(() => setGenStatus(''), 5000);
             }
           } catch { /* keep polling */ }
-          if (polls > 30) {
+          if (polls > 40) {
             clearInterval(pollRef.current!);
             setGenerating(false);
             setGenStatus(de ? 'Zeitüberschreitung — bitte erneut versuchen.' : 'Timeout — please try again.');
@@ -245,9 +262,36 @@ const ReportsPage: React.FC = () => {
 
       {/* Report content */}
       <div className="wf-report-content">
+        {/* Language toggle — DE / EN */}
+        <div style={{ display: 'flex', gap: '6px', marginBottom: '4px' }}>
+          {(['de', 'en'] as LangKey[]).map(l => (
+            <button
+              key={l}
+              onClick={() => { stopAudio(); setReportLang(l); }}
+              style={{
+                padding: '4px 14px',
+                fontFamily: 'var(--font-head)',
+                fontSize: '10px',
+                fontWeight: 700,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                border: `1px solid ${reportLang === l ? 'var(--gold)' : 'var(--border)'}`,
+                background: reportLang === l ? 'rgba(200,168,75,0.12)' : 'transparent',
+                color: reportLang === l ? 'var(--gold)' : 'var(--text-muted)',
+                cursor: 'pointer',
+              }}
+            >
+              {l === 'de' ? '🇩🇪 Deutsch' : '🇬🇧 English'}
+            </button>
+          ))}
+          <span style={{ marginLeft: 'auto', fontSize: '10px', color: 'var(--text-muted)', alignSelf: 'center' }}>
+            {currentLocation?.name.split('–')[1]?.trim() || currentLocation?.name}
+          </span>
+        </div>
+
         <div className="wf-report-text-full">
-          {reports[presenter]
-            ? reports[presenter]
+          {reports[reportLang][presenter]
+            ? reports[reportLang][presenter]
             : (de ? 'Noch kein Bericht — bitte "Generieren & Abspielen" klicken.' : 'No report yet — click "Generate & Play" above.')}
         </div>
 
@@ -256,7 +300,7 @@ const ReportsPage: React.FC = () => {
           <button
             className={`wf-play-full ${isPlaying ? 'stop' : ''}`}
             onClick={() => isPlaying ? stopAudio() : playAudio(presenter)}
-            disabled={!reports[presenter]}
+            disabled={!reports[reportLang][presenter]}
           >
             {isPlaying ? (de ? '⏹ STOPP' : '⏹ STOP') : (de ? '▶ VORLESEN' : '▶ READ ALOUD')}
           </button>

@@ -18,6 +18,7 @@ def get_all_weather_data(
     person: str = "",
     hobbies: list = None,
     language: str = "de",
+    languages: list = None,
 ):
     """
     Full pipeline orchestrator:
@@ -103,54 +104,51 @@ def get_all_weather_data(
             except Exception as exc:
                 print(f"[Context] WARNING: context engine failed — {exc}")
 
-    # ── AI text + audio ───────────────────────────────────────────────────────
-    for i, presenter in enumerate(PRESENTERS):
-        # Check cache: skip Gemini if a fresh report already exists for the same ZIPs
-        cached = _get_cached_report(presenter, zipcodes or cities)
-        if cached:
-            text = cached
-            print(f"[Cache] Using cached report for {presenter} (< {REPORT_TTL_MINUTES} min old)")
-        else:
-            text = text_generation.prompt(
-                cities=cities,
-                person=presenter,
-                hobbies=hobbies,
-                language=language,
-                zipcodes=zipcodes,
-                context=primary_context,
-            )
+    # ── AI text + audio — generate for every requested language ──────────────
+    active_languages = languages if languages else [language]
 
-            # Save report to MongoDB
-            try:
-                mongo.upsert_report(
-                    presenter=presenter,
-                    text=text,
-                    zipcodes=zipcodes or [],
+    for lang in active_languages:
+        print(f"[Pipeline] Generating reports in language={lang}")
+        for i, presenter in enumerate(PRESENTERS):
+            cached = _get_cached_report(presenter, zipcodes or cities, lang)
+            if cached:
+                text = cached
+                print(f"[Cache] Using cached {presenter}/{lang} (< {REPORT_TTL_MINUTES} min old)")
+            else:
+                text = text_generation.prompt(
                     cities=cities,
-                    language=language,
+                    person=presenter,
+                    hobbies=hobbies,
+                    language=lang,
+                    zipcodes=zipcodes,
+                    context=primary_context,
                 )
-                print(f"[MongoDB] Report saved for {presenter}")
-            except Exception as exc:
-                print(f"[MongoDB] WARNING: could not save report — {exc}")
+                try:
+                    mongo.upsert_report(
+                        presenter=presenter,
+                        text=text,
+                        zipcodes=zipcodes or [],
+                        cities=cities,
+                        language=lang,
+                    )
+                    print(f"[MongoDB] Report saved for {presenter}/{lang}")
+                except Exception as exc:
+                    print(f"[MongoDB] WARNING: could not save report — {exc}")
 
-        # Always write .txt + re-generate MP3 (audio should match latest text)
-        io.write_prompt_to_txt(text, presenter)
-        tts.generate_mp3(language_code=language, text=text, person=presenter)
+            io.write_prompt_to_txt(text, presenter)
+            tts.generate_mp3(language_code=lang, text=text, person=presenter)
 
-        if i < len(PRESENTERS) - 1 and not cached:
-            print("Waiting 5 seconds before next Gemini request…")
-            time.sleep(5)
+            if i < len(PRESENTERS) - 1 and not cached:
+                print("Waiting 5 seconds before next Gemini request…")
+                time.sleep(5)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _get_cached_report(presenter: str, keys: list) -> str | None:
-    """
-    Return the cached report text if it exists in MongoDB, is < REPORT_TTL_MINUTES old,
-    and covers the same set of ZIP codes / cities. Otherwise return None.
-    """
+def _get_cached_report(presenter: str, keys: list, language: str = "de") -> str | None:
+    """Return cached report text if < REPORT_TTL_MINUTES old and same location set."""
     try:
-        doc = mongo.get_report(presenter)
+        doc = mongo.get_report(presenter, language)
         if not doc:
             return None
         generated_at = doc.get("generated_at")
@@ -161,7 +159,6 @@ def _get_cached_report(presenter: str, keys: list) -> str | None:
         age = datetime.now(timezone.utc) - generated_at
         if age > timedelta(minutes=REPORT_TTL_MINUTES):
             return None
-        # Check same set of locations
         cached_keys = sorted(doc.get("zipcodes") or doc.get("cities") or [])
         if sorted(keys) != cached_keys:
             return None

@@ -130,9 +130,9 @@ def upsert_report(
     cities: list[str],
     language: str,
 ) -> None:
-    """Insert or replace the AI text report for a given presenter."""
+    """Insert or replace the AI text report for a given presenter + language."""
     _reports_col().update_one(
-        {"presenter": presenter},
+        {"presenter": presenter, "language": language},
         {
             "$set": {
                 "presenter": presenter,
@@ -147,9 +147,9 @@ def upsert_report(
     )
 
 
-def get_report(presenter: str) -> dict | None:
-    """Return the latest AI report for a presenter, or None."""
-    return _reports_col().find_one({"presenter": presenter}, {"_id": 0})
+def get_report(presenter: str, language: str = "de") -> dict | None:
+    """Return the latest AI report for a presenter + language, or None."""
+    return _reports_col().find_one({"presenter": presenter, "language": language}, {"_id": 0})
 
 
 def get_all_reports() -> list[dict]:

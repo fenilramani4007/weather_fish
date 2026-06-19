@@ -123,15 +123,16 @@ def api_info():
 async def generate_documents(request: Request):
     """Trigger the full pipeline for one or more German zip codes."""
     try:
-        payload  = await request.json()
-        cities   = payload.get("cities", [])
-        zipcodes = payload.get("zipcodes", [])
-        person   = payload.get("person", "")
-        hobbies  = payload.get("hobbies", [])
-        language = payload.get("language", "de")
+        payload   = await request.json()
+        cities    = payload.get("cities", [])
+        zipcodes  = payload.get("zipcodes", [])
+        person    = payload.get("person", "")
+        hobbies   = payload.get("hobbies", [])
+        language  = payload.get("language", "de")
+        languages = payload.get("languages", ["de", "en"])  # always generate both
 
-        print(f"[Pipeline] Generating for zipcodes={zipcodes}, cities={cities}")
-        api.get_all_weather_data(cities, zipcodes, person, hobbies, language)
+        print(f"[Pipeline] Generating for zipcodes={zipcodes}, cities={cities}, languages={languages}")
+        api.get_all_weather_data(cities, zipcodes, person, hobbies, language, languages)
 
         return {"status": "success", "message": "Wetterdaten wurden erzeugt."}
 
@@ -159,12 +160,12 @@ def get_weather(zipcode: str):
 # ── GET /api/report/{presenter} ───────────────────────────────────────────────
 
 @app.get("/api/report/{presenter}")
-def get_report(presenter: str):
-    doc = mongo.get_report(presenter)
+def get_report(presenter: str, lang: str = "de"):
+    doc = mongo.get_report(presenter, lang)
     if doc is None:
         raise HTTPException(
             status_code=404,
-            detail=f"Kein Bericht für {presenter}. Bitte POST /generate-documents aufrufen."
+            detail=f"Kein Bericht für {presenter}/{lang}. Bitte POST /generate-documents aufrufen."
         )
     if "generated_at" in doc and hasattr(doc["generated_at"], "isoformat"):
         doc["generated_at"] = doc["generated_at"].isoformat()
