@@ -144,7 +144,7 @@ const ChatWidget: React.FC = () => {
                 background: 'rgba(255,255,255,0.06)',
                 border: '1px solid rgba(255,255,255,0.12)',
                 borderRadius: '8px', padding: '7px 10px',
-                fontSize: '12px', color: '#eee', outline: 'none',
+                fontSize: '13px', color: 'var(--text)', outline: 'none',
               }}
             />
             <button
@@ -154,8 +154,8 @@ const ChatWidget: React.FC = () => {
                 background: input.trim() ? 'var(--gold, #c9a227)' : 'rgba(255,255,255,0.1)',
                 border: 'none', borderRadius: '8px',
                 padding: '7px 12px', cursor: 'pointer',
-                color: input.trim() ? '#000' : '#888',
-                fontSize: '12px', fontWeight: 700, transition: 'background 0.15s',
+                color: input.trim() ? '#0a0a14' : 'rgba(255,255,255,0.4)',
+                fontSize: '13px', fontWeight: 700, transition: 'background 0.15s',
               }}
             >
               {isDE ? 'Senden' : 'Send'}
@@ -171,9 +171,9 @@ const Bubble: React.FC<{ role: 'user' | 'model'; text: string }> = ({ role, text
   <div style={{
     alignSelf: role === 'user' ? 'flex-end' : 'flex-start',
     background: role === 'user' ? 'var(--gold, #c9a227)' : 'rgba(255,255,255,0.07)',
-    color: role === 'user' ? '#000' : '#ddd',
+    color: role === 'user' ? '#0a0a14' : 'var(--text)',
     borderRadius: role === 'user' ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
-    padding: '8px 12px', fontSize: '12px', maxWidth: '85%',
+    padding: '8px 12px', fontSize: '13px', maxWidth: '85%',
     lineHeight: '1.5', whiteSpace: 'pre-wrap',
   }}>
     {text}
