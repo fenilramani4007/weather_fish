@@ -45,6 +45,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem(USER_KEY, JSON.stringify(u));
   };
 
+  const _parseResponse = async (r: Response, fallback: string) => {
+    const text = await r.text();
+    try { return { ok: r.ok, data: JSON.parse(text) }; }
+    catch { return { ok: r.ok, data: { detail: r.ok ? fallback : `Server error (${r.status})` } }; }
+  };
+
   const login = useCallback(async (email: string, password: string) => {
     setLoading(true);
     try {
@@ -53,8 +59,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.detail || 'Login failed');
+      const { ok, data } = await _parseResponse(r, 'Login failed');
+      if (!ok) throw new Error(data.detail || 'Login failed');
       _persist(data.token, data.user);
     } finally { setLoading(false); }
   }, []);
@@ -67,8 +73,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, username, password }),
       });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.detail || 'Registration failed');
+      const { ok, data } = await _parseResponse(r, 'Registration failed');
+      if (!ok) throw new Error(data.detail || 'Registration failed');
       _persist(data.token, data.user);
     } finally { setLoading(false); }
   }, []);

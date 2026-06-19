@@ -23,5 +23,5 @@ apscheduler==3.10.4
 edge-tts
 
 # Auth — JWT + password hashing
-python-jose[cryptography]
-passlib[bcrypt]
+PyJWT
+bcrypt
