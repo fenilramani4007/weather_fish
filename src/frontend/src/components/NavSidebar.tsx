@@ -3,14 +3,16 @@ import { NavLink, useLocation as useRouterLocation } from 'react-router-dom';
 import { useLocation } from '../contexts/LocationContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useWeather } from '../contexts/WeatherContext';
+import { useAuth } from '../contexts/AuthContext';
 import { getWeatherEmoji } from '../utils/weatherHelpers';
 
 const NAV_ITEMS = [
-  { path: '/',          icon: '🏠', labelDE: 'Dashboard',  labelEN: 'Dashboard'  },
-  { path: '/reports',   icon: '📻', labelDE: 'Berichte',   labelEN: 'Reports'    },
-  { path: '/forecast',  icon: '📊', labelDE: 'Vorhersage', labelEN: 'Forecast'   },
-  { path: '/chat',      icon: '💬', labelDE: 'KI-Chat',    labelEN: 'AI Chat'    },
-  { path: '/settings',  icon: '⚙️', labelDE: 'Einstellungen', labelEN: 'Settings' },
+  { path: '/',          icon: '🏠', labelDE: 'Dashboard',      labelEN: 'Dashboard'   },
+  { path: '/reports',   icon: '📻', labelDE: 'Berichte',        labelEN: 'Reports'     },
+  { path: '/forecast',  icon: '📊', labelDE: 'Vorhersage',      labelEN: 'Forecast'    },
+  { path: '/chat',      icon: '💬', labelDE: 'KI-Chat',         labelEN: 'AI Chat'     },
+  { path: '/settings',  icon: '⚙️', labelDE: 'Einstellungen',  labelEN: 'Settings'    },
+  { path: '/profile',   icon: '👤', labelDE: 'Mein Profil',    labelEN: 'My Profile'  },
 ];
 
 interface NavSidebarProps { isOpen: boolean; onClose: () => void; }
@@ -19,6 +21,7 @@ const NavSidebar: React.FC<NavSidebarProps> = ({ isOpen, onClose }) => {
   const { currentLocation, savedLocations } = useLocation();
   const { language } = useLanguage();
   const { weatherData } = useWeather();
+  const { user, logout } = useAuth();
   const routerLoc = useRouterLocation();
   const de = language === 'de';
 
@@ -42,6 +45,8 @@ const NavSidebar: React.FC<NavSidebarProps> = ({ isOpen, onClose }) => {
 
   const cur = weatherData?.current;
   const emoji = cur ? getWeatherEmoji(cur.overcast, cur.current_precipitation) : '';
+
+  const initials = user ? user.username.slice(0, 2).toUpperCase() : '?';
 
   return (
     <nav className={`wf-nav${isOpen ? ' wf-nav--open' : ''}`}>
@@ -89,7 +94,7 @@ const NavSidebar: React.FC<NavSidebarProps> = ({ isOpen, onClose }) => {
         </div>
       )}
 
-      {/* Location count */}
+      {/* Location dots */}
       {savedLocations.length > 0 && (
         <div className="wf-nav-locs">
           {savedLocations.map(loc => (
@@ -102,6 +107,22 @@ const NavSidebar: React.FC<NavSidebarProps> = ({ isOpen, onClose }) => {
       {/* Scheduler status */}
       {schedStatus && (
         <div className="wf-nav-sched">{schedStatus}</div>
+      )}
+
+      {/* User section */}
+      {user && (
+        <div className="wf-nav-user">
+          <NavLink to="/profile" className="wf-nav-user-info" onClick={onClose}>
+            <div className="wf-nav-avatar">{initials}</div>
+            <div className="wf-nav-user-text">
+              <div className="wf-nav-user-name">{user.username}</div>
+              <div className="wf-nav-user-email">{user.email}</div>
+            </div>
+          </NavLink>
+          <button className="wf-nav-logout" onClick={logout} title={de ? 'Abmelden' : 'Log out'}>
+            ↩
+          </button>
+        </div>
       )}
 
       {/* System tag */}

@@ -80,6 +80,14 @@ def _history_col() -> Collection:
     return get_db()["weather_history"]
 
 
+def _users_col() -> Collection:
+    return get_db()["users"]
+
+
+def _activities_col() -> Collection:
+    return get_db()["user_activities"]
+
+
 # ── Weather snapshots ──────────────────────────────────────────────────────────
 
 def upsert_weather(
@@ -230,6 +238,63 @@ def append_history(
     # Prune records older than 90 days
     cutoff = now - timedelta(days=90)
     _history_col().delete_many({"zipcode": zipcode, "recorded_at": {"$lt": cutoff}})
+
+
+# ── Users ──────────────────────────────────────────────────────────────────────
+
+def create_user(email: str, username: str, password_hash: str) -> str:
+    result = _users_col().insert_one({
+        "email": email.lower(),
+        "username": username,
+        "password_hash": password_hash,
+        "hobbies": [],
+        "created_at": datetime.now(timezone.utc),
+    })
+    return str(result.inserted_id)
+
+
+def get_user_by_email(email: str) -> dict | None:
+    return _users_col().find_one({"email": email.lower()})
+
+
+def get_user_by_id(user_id: str) -> dict | None:
+    from bson import ObjectId
+    try:
+        return _users_col().find_one({"_id": ObjectId(user_id)}, {"password_hash": 0})
+    except Exception:
+        return None
+
+
+def update_user(user_id: str, updates: dict) -> None:
+    from bson import ObjectId
+    try:
+        _users_col().update_one({"_id": ObjectId(user_id)}, {"$set": updates})
+    except Exception as exc:
+        print(f"[MongoDB] update_user failed: {exc}")
+
+
+# ── User Activities ────────────────────────────────────────────────────────────
+
+def log_activity(user_id: str, city: str, zipcode: str, hobbies: list) -> None:
+    now = datetime.now(timezone.utc)
+    _activities_col().insert_one({
+        "user_id": user_id,
+        "date": now.strftime("%Y-%m-%d"),
+        "city": city,
+        "zipcode": zipcode,
+        "hobbies": hobbies,
+        "timestamp": now,
+    })
+
+
+def get_user_activities(user_id: str, days: int = 30) -> list[dict]:
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    return list(
+        _activities_col().find(
+            {"user_id": user_id, "timestamp": {"$gte": cutoff}},
+            {"_id": 0},
+        ).sort("timestamp", DESCENDING)
+    )
 
 
 def get_history(zipcode: str, days: int = 14) -> list[dict]:

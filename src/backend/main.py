@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 load_dotenv()  # Must be first — loads .env before any module reads os.environ
 
 import os
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -13,6 +13,10 @@ import uvicorn
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from backend import api
+from backend.auth import (
+    hash_password, verify_password, create_token,
+    get_current_user, optional_user,
+)
 from database import mongo
 from ai import chat as ai_chat
 
@@ -120,7 +124,10 @@ def api_info():
 # ── POST /generate-documents ──────────────────────────────────────────────────
 
 @app.post("/generate-documents")
-async def generate_documents(request: Request):
+async def generate_documents(
+    request: Request,
+    user_payload: dict | None = Depends(optional_user),
+):
     """Trigger the full pipeline for one or more German zip codes."""
     try:
         payload   = await request.json()
@@ -129,10 +136,22 @@ async def generate_documents(request: Request):
         person    = payload.get("person", "")
         hobbies   = payload.get("hobbies", [])
         language  = payload.get("language", "de")
-        languages = payload.get("languages", ["de", "en"])  # always generate both
+        languages = payload.get("languages", ["de", "en"])
 
         print(f"[Pipeline] Generating for zipcodes={zipcodes}, cities={cities}, languages={languages}")
         api.get_all_weather_data(cities, zipcodes, person, hobbies, language, languages)
+
+        # Log activity for authenticated users
+        if user_payload and zipcodes and cities:
+            try:
+                mongo.log_activity(
+                    user_id=user_payload["sub"],
+                    city=cities[0],
+                    zipcode=zipcodes[0],
+                    hobbies=hobbies,
+                )
+            except Exception as exc:
+                print(f"[Activity] WARNING: could not log activity — {exc}")
 
         return {"status": "success", "message": "Wetterdaten wurden erzeugt."}
 
@@ -243,6 +262,98 @@ def get_history(zipcode: str, days: int = 14):
         if "recorded_at" in r and hasattr(r["recorded_at"], "isoformat"):
             r["recorded_at"] = r["recorded_at"].isoformat()
     return {"zipcode": zipcode, "days": days, "count": len(records), "records": records}
+
+
+# ── POST /api/auth/register ───────────────────────────────────────────────────
+
+@app.post("/api/auth/register")
+async def register(request: Request):
+    body = await request.json()
+    email    = (body.get("email") or "").strip().lower()
+    username = (body.get("username") or "").strip()
+    password = body.get("password") or ""
+
+    if not email or not username or not password:
+        raise HTTPException(status_code=400, detail="email, username and password are required")
+    if len(password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    if mongo.get_user_by_email(email):
+        raise HTTPException(status_code=409, detail="Email already registered")
+
+    user_id = mongo.create_user(email, username, hash_password(password))
+    token   = create_token(user_id, email)
+    return {"token": token, "user": {"id": user_id, "email": email, "username": username, "hobbies": []}}
+
+
+# ── POST /api/auth/login ──────────────────────────────────────────────────────
+
+@app.post("/api/auth/login")
+async def login(request: Request):
+    body = await request.json()
+    email    = (body.get("email") or "").strip().lower()
+    password = body.get("password") or ""
+
+    user = mongo.get_user_by_email(email)
+    if not user or not verify_password(password, user.get("password_hash", "")):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    user_id = str(user["_id"])
+    token   = create_token(user_id, email)
+    return {
+        "token": token,
+        "user": {
+            "id": user_id,
+            "email": user["email"],
+            "username": user["username"],
+            "hobbies": user.get("hobbies", []),
+        },
+    }
+
+
+# ── GET /api/auth/me ──────────────────────────────────────────────────────────
+
+@app.get("/api/auth/me")
+async def me(current: dict = Depends(get_current_user)):
+    user = mongo.get_user_by_id(current["sub"])
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user["id"] = str(user.pop("_id", current["sub"]))
+    if "created_at" in user and hasattr(user["created_at"], "isoformat"):
+        user["created_at"] = user["created_at"].isoformat()
+    return user
+
+
+# ── PUT /api/auth/profile ─────────────────────────────────────────────────────
+
+@app.put("/api/auth/profile")
+async def update_profile(request: Request, current: dict = Depends(get_current_user)):
+    body = await request.json()
+    updates: dict = {}
+    if "username" in body and body["username"].strip():
+        updates["username"] = body["username"].strip()
+    if "hobbies" in body and isinstance(body["hobbies"], list):
+        updates["hobbies"] = body["hobbies"]
+    if updates:
+        mongo.update_user(current["sub"], updates)
+    user = mongo.get_user_by_id(current["sub"])
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user["id"] = str(user.pop("_id", current["sub"]))
+    if "created_at" in user and hasattr(user["created_at"], "isoformat"):
+        user["created_at"] = user["created_at"].isoformat()
+    return user
+
+
+# ── GET /api/activity/history ─────────────────────────────────────────────────
+
+@app.get("/api/activity/history")
+async def activity_history(days: int = 30, current: dict = Depends(get_current_user)):
+    days = max(1, min(days, 90))
+    records = mongo.get_user_activities(current["sub"], days)
+    for r in records:
+        if "timestamp" in r and hasattr(r["timestamp"], "isoformat"):
+            r["timestamp"] = r["timestamp"].isoformat()
+    return {"count": len(records), "records": records}
 
 
 # ── GET /api/chat/debug ───────────────────────────────────────────────────────

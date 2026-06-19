@@ -4,6 +4,7 @@ import Mascot from '../components/Mascot';
 import { useLocation } from '../contexts/LocationContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useWeather } from '../contexts/WeatherContext';
+import { useAuth } from '../contexts/AuthContext';
 
 type Presenter = 'Fisch' | 'Merkel' | 'Haftbefehl';
 type MascotKey = 'mascotfish' | 'mascotmerkel' | 'mascothaftbefehl';
@@ -64,6 +65,7 @@ const ReportsPage: React.FC = () => {
   const { savedLocations, currentLocation, triggerRefresh } = useLocation();
   const { language } = useLanguage();
   const { weatherData } = useWeather();
+  const { token } = useAuth();
   const navigate = useNavigate();
   const de = language === 'de';
 
@@ -140,7 +142,10 @@ const ReportsPage: React.FC = () => {
 
     fetch('/generate-documents', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({
         cities: [city], zipcodes: [zipcode],
         languages: ['de', 'en'],   // generate both

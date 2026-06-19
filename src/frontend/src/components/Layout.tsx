@@ -8,6 +8,7 @@ import ReportsPage    from '../pages/ReportsPage';
 import ForecastPage   from '../pages/ForecastPage';
 import ChatPage       from '../pages/ChatPage';
 import SettingsPage   from '../pages/SettingsPage';
+import ProfilePage    from '../pages/ProfilePage';
 
 const Layout: React.FC = () => {
   const [navOpen, setNavOpen] = useState(false);
@@ -28,6 +29,7 @@ const Layout: React.FC = () => {
             <Route path="/forecast" element={<ForecastPage />} />
             <Route path="/chat"     element={<ChatPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/profile"  element={<ProfilePage />} />
             <Route path="*"         element={<DashboardPage />} />
           </Routes>
         </main>
