@@ -1528,16 +1528,76 @@ body {
   30%            { transform: translateY(-6px); opacity: 1; }
 }
 
+/* Quick questions strip — mobile only (desktop uses sidebar) */
+.wf-chat-quick-strip {
+  display: none;
+  padding: 6px 12px;
+  gap: 6px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+  flex-shrink: 0;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.wf-chat-quick-strip::-webkit-scrollbar { display: none; }
+
+.wf-chat-quick-chip {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  font-size: 11px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  color: var(--text-sec);
+  cursor: pointer;
+  border-radius: 20px;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.wf-chat-quick-chip:hover:not(:disabled) { border-color: var(--gold-border); color: var(--gold); }
+.wf-chat-quick-chip:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Input area — single-row layout at all sizes */
 .wf-chat-input-area {
   display: flex;
-  gap: 8px;
-  padding: 14px 20px;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 14px 14px;
   border-top: 1px solid var(--border);
   background: var(--bg-panel);
+  flex-shrink: 0;
 }
+
+.wf-chat-input-row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+/* Small square buttons: voice toggle + mic */
+.wf-chat-ctrl-btn {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.5);
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.wf-chat-ctrl-btn.active    { background: var(--gold); color: #0a0a14; }
+.wf-chat-ctrl-btn.listening { background: #ef4444;    color: #fff; }
+.wf-chat-ctrl-btn:disabled  { opacity: 0.4; cursor: not-allowed; }
 
 .wf-chat-input {
   flex: 1;
+  min-height: 42px;
+  max-height: 120px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   color: var(--text);
@@ -1550,26 +1610,38 @@ body {
   line-height: 1.5;
 }
 
-.wf-chat-input:focus       { border-color: var(--gold); }
+.wf-chat-input:focus        { border-color: var(--gold); }
 .wf-chat-input::placeholder { color: var(--text-muted); }
 
 .wf-chat-send {
-  padding: 10px 20px;
+  flex-shrink: 0;
+  width: 56px;
+  height: 42px;
   background: var(--gold);
   color: #07090f;
   font-family: var(--font-head);
-  font-size: 11px;
+  font-size: 16px;
   font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
   border: none;
   cursor: pointer;
   transition: background 0.15s;
-  align-self: flex-end;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
 }
 
 .wf-chat-send:hover    { background: var(--gold-bright); }
-.wf-chat-send:disabled { background: var(--text-muted); cursor: not-allowed; }
+.wf-chat-send:disabled { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.3); cursor: not-allowed; }
+
+.wf-chat-listening {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: #f87171;
+  padding: 0 2px;
+}
 
 /* ════════════════════════════════════════════════════════
    SETTINGS PAGE
@@ -2236,15 +2308,19 @@ html, body { overflow-x: hidden; }
   /* Clear history hides on mobile (covered by chat header actions) */
   .wf-btn-secondary   { font-size: 10px; }
 
+  /* ── Quick questions strip — visible on mobile ── */
+  .wf-chat-quick-strip { display: flex; }
+
   /* ── Chat messages ── */
   .wf-chat-messages { padding: 10px 12px; gap: 10px; }
   .wf-chat-bubble   { max-width: 92%; }
   .wf-chat-bubble.user { max-width: 88%; }
 
-  /* ── Chat input area ── */
-  .wf-chat-input-area { padding: 8px 10px 10px; }
-  .wf-chat-input      { font-size: 14px !important; }
-  .wf-chat-send       { padding: 0 14px; font-size: 12px; }
+  /* ── Chat input area — already single-row, just tighten padding ── */
+  .wf-chat-input-area { padding: 8px 10px 12px; }
+  .wf-chat-input      { font-size: 16px !important; min-height: 44px; }
+  .wf-chat-send       { width: 52px; height: 44px; }
+  .wf-chat-ctrl-btn   { width: 44px; height: 44px; }
 
   /* ── Profile card — stack on mobile ── */
   .wf-profile-card {

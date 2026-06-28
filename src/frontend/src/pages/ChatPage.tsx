@@ -373,6 +373,15 @@ const ChatPage: React.FC = () => {
 
         {/* ── Right: chat panel ── */}
         <div className="wf-chat-main">
+          {/* Quick questions strip — shown only on mobile (sidebar hidden) */}
+          <div className="wf-chat-quick-strip">
+            {(de ? QUICK_QUESTIONS.de : QUICK_QUESTIONS.en).map((q, i) => (
+              <button key={i} className="wf-chat-quick-chip" onClick={() => send(q)} disabled={loading}>
+                {q}
+              </button>
+            ))}
+          </div>
+
           <div className="wf-chat-messages">
             {/* Welcome bubble */}
             <div className="wf-chat-bubble model">
@@ -420,77 +429,59 @@ const ChatPage: React.FC = () => {
             <div ref={bottomRef} />
           </div>
 
-          {/* ── Input area ── */}
+          {/* ── Input area — single row at all screen sizes ── */}
           <div className="wf-chat-input-area">
-
-            {/* Voice controls row */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+            <div className="wf-chat-input-row">
+              {/* Voice output toggle */}
               <button
+                className={`wf-chat-ctrl-btn${voiceOut ? ' active' : ''}`}
                 onClick={toggleVoiceOut}
-                title={de ? 'Sprachausgabe umschalten' : 'Toggle voice output'}
-                style={{
-                  background: voiceOut ? 'var(--gold)' : 'rgba(255,255,255,0.07)',
-                  border: 'none', borderRadius: '7px', padding: '5px 10px',
-                  cursor: 'pointer', fontSize: '14px',
-                  color: voiceOut ? '#0a0a14' : 'rgba(255,255,255,0.45)',
-                  transition: 'background 0.15s',
-                }}
+                title={de ? 'Sprachausgabe' : 'Voice output'}
               >
                 {voiceOut ? '🔊' : '🔇'}
               </button>
-              <span style={{ fontSize: '10px', color: 'var(--text-muted)', flex: 1 }}>
-                {voiceOut
-                  ? (de ? 'Sprachausgabe aktiv' : 'Voice output on')
-                  : (de ? 'Sprachausgabe aus' : 'Voice output off')}
-              </span>
-              {listening && (
-                <span style={{ fontSize: '10px', color: '#f87171', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: '#f87171', animation: 'wf-pulse 1s infinite' }} />
-                  {de ? 'Höre zu…' : 'Listening…'}
-                </span>
-              )}
-            </div>
 
-            {/* Textarea + mic + send */}
-            <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-end' }}>
+              {/* Textarea */}
               <textarea
                 ref={inputRef}
                 className="wf-chat-input"
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-                placeholder={de ? 'Frage zum Wetter… (Enter zum Senden)' : 'Ask about the weather… (Enter to send)'}
-                rows={2}
+                placeholder={de ? 'Frage stellen…' : 'Ask something…'}
+                rows={1}
                 disabled={loading}
-                style={{ flex: 1 }}
               />
 
+              {/* Mic button (only if browser supports it) */}
               {hasMic && (
                 <button
+                  className={`wf-chat-ctrl-btn${listening ? ' listening' : ''}`}
                   onClick={toggleMic}
                   disabled={loading}
                   title={de ? (listening ? 'Stoppen' : 'Spracheingabe') : (listening ? 'Stop' : 'Voice input')}
-                  style={{
-                    background: listening ? '#ef4444' : 'rgba(255,255,255,0.07)',
-                    border: 'none', borderRadius: '8px',
-                    padding: '0 13px', cursor: 'pointer',
-                    color: listening ? '#fff' : 'rgba(255,255,255,0.5)',
-                    fontSize: '16px', transition: 'background 0.15s',
-                    alignSelf: 'stretch', display: 'flex', alignItems: 'center',
-                  }}
                 >
                   🎤
                 </button>
               )}
 
+              {/* Send */}
               <button
                 className="wf-chat-send"
                 onClick={() => send()}
                 disabled={loading || !input.trim()}
               >
-                {de ? 'Senden' : 'Send'}
+                {de ? '→' : '→'}
               </button>
             </div>
+
+            {/* Listening status — below the row */}
+            {listening && (
+              <div className="wf-chat-listening">
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f87171', display: 'inline-block', animation: 'wf-pulse 1s infinite' }} />
+                {de ? 'Höre zu…' : 'Listening…'}
+              </div>
+            )}
           </div>
         </div>
       </div>
