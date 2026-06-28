@@ -118,6 +118,25 @@ def _context_fallback(message: str, weather_ctx: dict | None, language: str) -> 
     wind    = cur.get("wind speed", "–")
     msg     = message.lower()
 
+    hourly  = weather_ctx.get("hourly", {})
+    weekone = weather_ctx.get("daily_weekone", {})
+
+    # ── Outdoor activity / event planning (the core differentiator) ──────────────
+    # "Should I plan a picnic?", "Good for cycling?", "Weekend plans?" etc.
+    ACTIVITY_WORDS = [
+        "picnic", "piknik", "grillparty", "grill", "barbecue",
+        "cycling", "radfahren", "fahrrad", "bike", "biking",
+        "running", "joggen", "jogging", "laufen",
+        "hiking", "wandern", "trekking",
+        "walking", "spazieren", "walk",
+        "outdoor", "draußen", "outside", "garden", "garten",
+        "sport", "exercise", "training",
+        "weekend", "wochenende", "plan", "event", "veranstaltung",
+        "swimming", "schwimmen", "tennis", "football", "fußball",
+    ]
+    if any(w in msg for w in ACTIVITY_WORDS):
+        return _activity_advice(msg, city, temp, precip, sky, wind, hourly, weekone, de)
+
     # Rain / umbrella
     if any(w in msg for w in ["umbrella", "schirm", "regenschirm", "regen", "rain"]):
         if precip == "rain":
@@ -146,7 +165,6 @@ def _context_fallback(message: str, weather_ctx: dict | None, language: str) -> 
 
     # Tomorrow
     if any(w in msg for w in ["morgen", "tomorrow"]):
-        weekone = weather_ctx.get("daily_weekone", {})
         days = list(weekone.items())
         if len(days) >= 2:
             d, data = days[1]
@@ -155,7 +173,6 @@ def _context_fallback(message: str, weather_ctx: dict | None, language: str) -> 
 
     # Next week / forecast / analysis
     if any(w in msg for w in ["woche", "week", "forecast", "prognose", "vorhersage", "analyse", "analysis", "next"]):
-        weekone = weather_ctx.get("daily_weekone", {})
         if weekone:
             lines = []
             for d, v in list(weekone.items())[:7]:
@@ -165,7 +182,6 @@ def _context_fallback(message: str, weather_ctx: dict | None, language: str) -> 
 
     # Warmest time of day
     if any(w in msg for w in ["wärmst", "warmest", "hottest", "wann warm"]):
-        hourly = weather_ctx.get("hourly", {})
         if hourly:
             peak = max(hourly.items(), key=lambda kv: kv[1].get("temperature", -99) if isinstance(kv[1], dict) else -99, default=(None, {}))
             if peak[0]:
@@ -186,6 +202,116 @@ def _context_fallback(message: str, weather_ctx: dict | None, language: str) -> 
         if de else
         "AI services are temporarily unavailable. Please try again later."
     )
+
+
+def _activity_advice(
+    msg: str,
+    city: str,
+    temp: float | None,
+    precip: str,
+    sky: str,
+    wind,
+    hourly: dict,
+    weekone: dict,
+    de: bool,
+) -> str:
+    """
+    Contextual outdoor activity advice — the core differentiator.
+    Works without Gemini by reasoning directly over weather data.
+    Handles: picnic, cycling, running, hiking, outdoor events, weekend plans.
+    """
+    # Determine which activity was asked about
+    msg_l = msg.lower()
+    if any(w in msg_l for w in ["picnic", "piknik", "grill", "barbecue", "bbq"]):
+        act_de, act_en = "Picknick", "picnic"
+        wind_limit = 30
+    elif any(w in msg_l for w in ["cycling", "radfahren", "fahrrad", "bike", "biking"]):
+        act_de, act_en = "Radfahren", "cycling"
+        wind_limit = 35
+    elif any(w in msg_l for w in ["running", "joggen", "jogging", "laufen"]):
+        act_de, act_en = "Joggen", "running"
+        wind_limit = 45
+    elif any(w in msg_l for w in ["hiking", "wandern", "trekking"]):
+        act_de, act_en = "Wandern", "hiking"
+        wind_limit = 40
+    elif any(w in msg_l for w in ["swimming", "schwimmen"]):
+        act_de, act_en = "Schwimmen", "swimming"
+        wind_limit = 50
+    elif any(w in msg_l for w in ["tennis", "football", "fußball", "sport", "exercise", "training"]):
+        act_de, act_en = "Sport", "sport/exercise"
+        wind_limit = 40
+    else:
+        act_de, act_en = "Outdoor-Aktivitäten", "outdoor activities"
+        wind_limit = 35
+
+    act = act_de if de else act_en
+
+    # Check if asking about weekend vs today
+    is_weekend_query = any(w in msg_l for w in ["weekend", "wochenende", "samstag", "sonntag", "saturday", "sunday"])
+
+    if is_weekend_query and weekone:
+        # Find Saturday/Sunday in the 7-day forecast
+        from datetime import datetime
+        weekend_days = []
+        for d, v in weekone.items():
+            try:
+                wd = datetime.strptime(d, "%Y-%m-%d").weekday()
+                if wd in (5, 6):  # Saturday=5, Sunday=6
+                    weekend_days.append((d, v))
+            except Exception:
+                pass
+
+        if weekend_days:
+            lines = []
+            for d, v in weekend_days:
+                rain_p = v.get("precipitation", 0) or 0
+                good = (v.get("maxtemp", 99) < 34 and v.get("mintemp", -99) > 3
+                        and rain_p < 40 and v.get("overcast", "") != "overcast")
+                icon  = "✅" if good else "⚠️"
+                day_label = ("Samstag" if datetime.strptime(d, "%Y-%m-%d").weekday() == 5 else "Sonntag") if de else \
+                            ("Saturday" if datetime.strptime(d, "%Y-%m-%d").weekday() == 5 else "Sunday")
+                lines.append(
+                    f"{icon} {day_label} ({d}): {v.get('mintemp')}–{v.get('maxtemp')}°C, "
+                    f"{v.get('overcast')}"
+                    + (f", {rain_p}% {'Regen' if de else 'rain'}" if rain_p > 20 else "")
+                )
+            header = (f"{act} dieses Wochenende in {city}:" if de
+                      else f"{act} this weekend in {city}:")
+            return header + "\n" + "\n".join(lines)
+
+    # Today's assessment
+    raining       = precip == "rain"
+    max_rain_prob = max(
+        (e.get("precipitation probability", 0) for e in hourly.values() if isinstance(e, dict)),
+        default=0,
+    )
+    hot   = temp is not None and temp > 33
+    cold  = temp is not None and temp < 4
+    windy = isinstance(wind, (int, float)) and wind > wind_limit
+
+    problems = []
+    if raining:         problems.append("Regen" if de else "rain")
+    elif max_rain_prob >= 50:
+        problems.append(f"{max_rain_prob}% {'Regenwahrscheinlichkeit' if de else 'rain chance'}")
+    if hot:             problems.append(f"{'sehr heiß' if de else 'very hot'} ({temp}°C)")
+    if cold:            problems.append(f"{'zu kalt' if de else 'too cold'} ({temp}°C)")
+    if windy:           problems.append(f"{'starker Wind' if de else 'strong wind'} ({wind} km/h)")
+
+    if not problems:
+        cond = f"{temp}°C, {sky}" if temp is not None else sky
+        return (
+            f"✅ Heute ist ideal für {act} in {city}! {cond} — perfekte Bedingungen."
+            if de else
+            f"✅ Today is ideal for {act} in {city}! {cond} — perfect conditions."
+        )
+    else:
+        reason = ", ".join(problems)
+        cond   = f"{temp}°C, {sky}" if temp is not None else sky
+        return (
+            f"⚠️ {act} in {city} heute eher schwierig: {reason}. Aktuell {cond}."
+            if de else
+            f"⚠️ {act} in {city} is tricky today due to: {reason}. Currently {cond}."
+        )
 
 
 def _fallback(language: str) -> str:

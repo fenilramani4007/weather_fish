@@ -15,17 +15,17 @@ interface Message {
 // ── Quick questions ───────────────────────────────────────────────────────────────
 const QUICK_QUESTIONS = {
   de: [
+    'Soll ich dieses Wochenende ein Picknick planen?',
     'Brauche ich heute einen Regenschirm?',
     'Analysiere das Wetter der nächsten Woche',
     'Was soll ich heute anziehen?',
-    'Wann ist es heute am wärmsten?',
     'Ist heute gut zum Radfahren?',
   ],
   en: [
+    'Should I plan a picnic this weekend?',
     'Do I need an umbrella today?',
     'Analyse next week weather forecast',
     'What should I wear today?',
-    'When is it warmest today?',
     'Is today good for cycling?',
   ],
 };
