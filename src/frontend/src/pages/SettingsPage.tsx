@@ -19,9 +19,12 @@ const SettingsPage: React.FC = () => {
   const [searchResults, setSearchResults] = useState<PostalCodeEntry[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchError, setSearchError] = useState('');
-  const [generating, setGenerating] = useState(false);
-  const [genStatus, setGenStatus]   = useState('');
-  const [schedInfo, setSchedInfo]   = useState<{ next_run: string; last_status: string } | null>(null);
+  const [generating, setGenerating]   = useState(false);
+  const [genStatus, setGenStatus]     = useState('');
+  const [schedInfo, setSchedInfo]     = useState<{ next_run: string; last_status: string; last_run?: string } | null>(null);
+  const [schedRunning, setSchedRunning] = useState(false);
+  const [schedMsg, setSchedMsg]         = useState('');
+  const triggerTimeRef                  = React.useRef<string | null>(null);
   const [hobbies, setHobbies] = useState<string[]>(() => {
     if (user?.hobbies?.length) return user.hobbies;
     try { return JSON.parse(localStorage.getItem(HOBBIES_KEY) ?? '[]'); } catch { return []; }
@@ -91,6 +94,51 @@ const SettingsPage: React.FC = () => {
         setTimeout(() => setGenStatus(''), 4000);
       })
       .catch(() => { setGenerating(false); setGenStatus(de ? 'Verbindungsfehler' : 'Connection error'); });
+  };
+
+  const handleRunNow = async () => {
+    if (schedRunning) return;
+    setSchedRunning(true);
+    setSchedMsg(de ? '⏳ Generierung läuft…' : '⏳ Running generation…');
+    triggerTimeRef.current = new Date().toISOString();
+
+    try {
+      await fetch('/api/schedule/run', { method: 'POST' });
+    } catch {
+      setSchedRunning(false);
+      setSchedMsg(de ? '❌ Verbindungsfehler' : '❌ Connection error');
+      return;
+    }
+
+    // Poll until last_run timestamp changes (generation completed)
+    let polls = 0;
+    const poll = setInterval(async () => {
+      polls++;
+      try {
+        const res  = await fetch('/api/schedule/status');
+        const data = await res.json();
+        setSchedInfo(data);
+
+        const newRun = data.last_run ?? '';
+        const triggered = triggerTimeRef.current ?? '';
+        const isNewer = newRun > triggered;        // ISO string compare
+
+        if (isNewer && data.last_status) {
+          clearInterval(poll);
+          setSchedRunning(false);
+          setSchedMsg(data.last_status.startsWith('ok')
+            ? `✅ ${data.last_status}`
+            : `❌ ${data.last_status}`);
+          setTimeout(() => setSchedMsg(''), 6000);
+        }
+      } catch {}
+
+      if (polls > 60) {          // 3 min timeout
+        clearInterval(poll);
+        setSchedRunning(false);
+        setSchedMsg(de ? '⏱ Zeitüberschreitung' : '⏱ Timed out');
+      }
+    }, 3000);
   };
 
   const handleRemove = (id: string) => {
@@ -264,11 +312,25 @@ const SettingsPage: React.FC = () => {
           </div>
           <button
             className="wf-btn-secondary"
-            style={{ marginTop: '8px', width: '100%' }}
-            onClick={() => fetch('/api/schedule/run', { method: 'POST' }).then(() => setGenStatus(de ? 'Manuell ausgelöst' : 'Manually triggered'))}
+            style={{ marginTop: '8px', width: '100%', opacity: schedRunning ? 0.7 : 1 }}
+            onClick={handleRunNow}
+            disabled={schedRunning}
           >
-            {de ? '▶ Jetzt ausführen' : '▶ Run now'}
+            {schedRunning
+              ? (de ? '⏳ Läuft… bitte warten' : '⏳ Running… please wait')
+              : (de ? '▶ Jetzt ausführen' : '▶ Run now')}
           </button>
+          {schedMsg && (
+            <div style={{
+              marginTop: '8px', padding: '8px 12px', fontSize: '11px',
+              background: schedMsg.startsWith('✅') ? 'rgba(74,222,128,0.08)' : schedMsg.startsWith('❌') ? 'rgba(185,28,28,0.12)' : 'rgba(255,255,255,0.05)',
+              border: `1px solid ${schedMsg.startsWith('✅') ? 'rgba(74,222,128,0.3)' : schedMsg.startsWith('❌') ? 'rgba(185,28,28,0.4)' : 'var(--border)'}`,
+              color: schedMsg.startsWith('✅') ? '#4ade80' : schedMsg.startsWith('❌') ? 'var(--red-bright)' : 'var(--gold)',
+              fontFamily: 'var(--font-mono)',
+            }}>
+              {schedMsg}
+            </div>
+          )}
         </section>
 
         {/* ── System info ── */}

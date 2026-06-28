@@ -53,7 +53,7 @@ def _scheduled_generation():
         zipcodes = [loc["zipcode"] for loc in locations]
         cities   = [loc["city"]    for loc in locations]
         print(f"[Scheduler] Auto-generating for {zipcodes}")
-        api.get_all_weather_data(cities=cities, zipcodes=zipcodes, language="de")
+        api.get_all_weather_data(cities=cities, zipcodes=zipcodes, languages=["de", "en"])
         _last_scheduled_status = f"ok — {len(zipcodes)} location(s)"
         print(f"[Scheduler] Done — {len(zipcodes)} location(s)")
     except Exception as exc:

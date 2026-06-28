@@ -267,37 +267,62 @@ const ReportsPage: React.FC = () => {
 
       {/* Report content */}
       <div className="wf-report-content">
-        {/* Language toggle — DE / EN */}
-        <div style={{ display: 'flex', gap: '6px', marginBottom: '4px' }}>
-          {(['de', 'en'] as LangKey[]).map(l => (
-            <button
-              key={l}
-              onClick={() => { stopAudio(); setReportLang(l); }}
-              style={{
-                padding: '4px 14px',
-                fontFamily: 'var(--font-head)',
-                fontSize: '10px',
-                fontWeight: 700,
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-                border: `1px solid ${reportLang === l ? 'var(--gold)' : 'var(--border)'}`,
-                background: reportLang === l ? 'rgba(200,168,75,0.12)' : 'transparent',
-                color: reportLang === l ? 'var(--gold)' : 'var(--text-muted)',
-                cursor: 'pointer',
-              }}
-            >
-              {l === 'de' ? '🇩🇪 Deutsch' : '🇬🇧 English'}
-            </button>
-          ))}
+        {/* Language toggle — DE / EN with availability indicators */}
+        <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {(['de', 'en'] as LangKey[]).map(l => {
+            const hasReport = !!reports[l][presenter];
+            const active    = reportLang === l;
+            return (
+              <button
+                key={l}
+                onClick={() => { stopAudio(); setReportLang(l); }}
+                title={hasReport ? (de ? 'Bericht vorhanden' : 'Report available') : (de ? 'Noch kein Bericht — Generieren klicken' : 'No report yet — click Generate')}
+                style={{
+                  padding: '5px 14px',
+                  fontFamily: 'var(--font-head)',
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                  border: `1px solid ${active ? 'var(--gold)' : 'var(--border)'}`,
+                  background: active ? 'rgba(200,168,75,0.12)' : 'transparent',
+                  color: active ? 'var(--gold)' : hasReport ? 'var(--text-sec)' : 'var(--text-muted)',
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '5px',
+                }}
+              >
+                {l === 'de' ? '🇩🇪 DE' : '🇬🇧 EN'}
+                <span style={{ fontSize: '9px', color: hasReport ? '#4ade80' : 'var(--text-muted)' }}>
+                  {hasReport ? '✓' : '–'}
+                </span>
+              </button>
+            );
+          })}
           <span style={{ marginLeft: 'auto', fontSize: '10px', color: 'var(--text-muted)', alignSelf: 'center' }}>
             {currentLocation?.name.split('–')[1]?.trim() || currentLocation?.name}
           </span>
         </div>
 
+        {/* Both-language confirmation banner */}
+        {reports.de[presenter] && reports.en[presenter] && (
+          <div style={{
+            fontSize: '10px', padding: '6px 10px', marginBottom: '8px',
+            background: 'rgba(74,222,128,0.07)', border: '1px solid rgba(74,222,128,0.2)',
+            color: '#4ade80', display: 'flex', alignItems: 'center', gap: '6px',
+          }}>
+            🇩🇪 ✓ &nbsp;·&nbsp; 🇬🇧 ✓
+            <span style={{ color: 'var(--text-muted)' }}>
+              {de ? '— Bericht in beiden Sprachen verfügbar. Klicke oben auf DE / EN zum Wechseln.' : '— Report available in both languages. Switch DE / EN above.'}
+            </span>
+          </div>
+        )}
+
         <div className="wf-report-text-full">
           {reports[reportLang][presenter]
             ? reports[reportLang][presenter]
-            : (de ? 'Noch kein Bericht — bitte "Generieren & Abspielen" klicken.' : 'No report yet — click "Generate & Play" above.')}
+            : (reportLang === 'en' && reports.de[presenter]
+              ? (de ? '🇬🇧 Kein englischer Bericht — klicke "Generieren & Abspielen" um beide Sprachen zu erzeugen.' : '🇬🇧 No English report yet — click "Generate & Play" to create reports in both languages.')
+              : (de ? 'Noch kein Bericht — bitte "Generieren & Abspielen" klicken.' : 'No report yet — click "Generate & Play" above.'))}
         </div>
 
         {/* Audio controls */}
