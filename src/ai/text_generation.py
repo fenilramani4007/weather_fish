@@ -226,20 +226,24 @@ def _template_fallback(
     """
     Generates a structured weather summary without AI.
     Used when all Gemini models are quota-exhausted.
+    Fully bilingual — DE and EN produce correctly localised text.
     """
-    _CONDITION_DE = {
-        "clear":         "klarer Himmel",
-        "partly cloudy": "teils bewölkt",
-        "cloudy":        "bewölkt",
-        "overcast":      "bedeckt",
+    en = language == "en"
+
+    _CONDITIONS = {
+        "clear":         "clear skies"         if en else "klarer Himmel",
+        "partly cloudy": "partly cloudy"       if en else "teils bewölkt",
+        "cloudy":        "cloudy"               if en else "bewölkt",
+        "overcast":      "overcast"             if en else "bedeckt",
     }
 
     severity_prefix = ""
     if context:
-        if context["severity"] == "warning":
-            severity_prefix = "⚠️ Wettervorsicht heute! "
-        elif context["severity"] == "cheerful":
-            severity_prefix = "☀️ Herrliches Wetter! "
+        sev = context.get("severity", "")
+        if sev == "warning":
+            severity_prefix = "⚠️ Weather caution today! " if en else "⚠️ Wettervorsicht heute! "
+        elif sev == "cheerful":
+            severity_prefix = "☀️ Gorgeous weather! "      if en else "☀️ Herrliches Wetter! "
 
     city_lines: list[str] = []
     for key, loc in list(data.items())[:4]:
@@ -247,17 +251,28 @@ def _template_fallback(
         cur   = loc.get("current", {})
         temp  = cur.get("temperature", "?")
         feels = cur.get("feels like", temp)
-        sky   = _CONDITION_DE.get(cur.get("overcast", ""), cur.get("overcast", "unbekannt"))
-        rain  = ", mit Niederschlag" if cur.get("current_precipitation") == "rain" else ""
-        city_lines.append(f"{city}: {temp}°C (gefühlt {feels}°C), {sky}{rain}")
+        raw   = cur.get("overcast", "")
+        sky   = _CONDITIONS.get(raw, raw or ("unknown" if en else "unbekannt"))
+        rain  = (", rain" if en else ", mit Niederschlag") if cur.get("current_precipitation") == "rain" else ""
+        if en:
+            city_lines.append(f"{city}: {temp}°C (feels like {feels}°C), {sky}{rain}")
+        else:
+            city_lines.append(f"{city}: {temp}°C (gefühlt {feels}°C), {sky}{rain}")
 
-    cities_str = " — ".join(city_lines) if city_lines else "Keine Standortdaten verfügbar"
-
-    template = (
-        f"{severity_prefix}Automatischer Wetterbericht ({person}): {cities_str}. "
-        f"[KI-Berichte sind derzeit nicht verfügbar — Gemini-Tageskontingent erschöpft. "
-        f"Bitte morgen erneut generieren.]"
-    )
+    if en:
+        cities_str = " — ".join(city_lines) if city_lines else "No location data available"
+        template = (
+            f"{severity_prefix}Automated weather report ({person}): {cities_str}. "
+            f"[AI reports are currently unavailable — Gemini daily quota exhausted. "
+            f"Please generate again tomorrow.]"
+        )
+    else:
+        cities_str = " — ".join(city_lines) if city_lines else "Keine Standortdaten verfügbar"
+        template = (
+            f"{severity_prefix}Automatischer Wetterbericht ({person}): {cities_str}. "
+            f"[KI-Berichte sind derzeit nicht verfügbar — Gemini-Tageskontingent erschöpft. "
+            f"Bitte morgen erneut generieren.]"
+        )
     return template
 
 

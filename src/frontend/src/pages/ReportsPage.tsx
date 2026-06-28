@@ -61,6 +61,13 @@ type BilingualReports = Record<LangKey, Record<Presenter, string>>;
 
 const EMPTY_REPORTS: Record<Presenter, string> = { Fisch: '', Merkel: '', Haftbefehl: '' };
 
+// Detect template fallback text (shown when Gemini quota is exhausted)
+const isFallback = (text: string) =>
+  text.includes('Tageskontingent erschöpft') ||
+  text.includes('daily quota exhausted') ||
+  text.includes('KI-Berichte sind derzeit nicht verfügbar') ||
+  text.includes('AI reports are currently unavailable');
+
 const ReportsPage: React.FC = () => {
   const { savedLocations, currentLocation, triggerRefresh } = useLocation();
   const { language } = useLanguage();
@@ -270,13 +277,23 @@ const ReportsPage: React.FC = () => {
         {/* Language toggle — DE / EN with availability indicators */}
         <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
           {(['de', 'en'] as LangKey[]).map(l => {
-            const hasReport = !!reports[l][presenter];
+            const text      = reports[l][presenter];
+            const hasText   = !!text;
+            const fallback  = hasText && isFallback(text);
+            const hasAI     = hasText && !fallback;
             const active    = reportLang === l;
+            const indicator = hasAI ? '✓' : fallback ? '⚠' : '–';
+            const indColor  = hasAI ? '#4ade80' : fallback ? 'var(--gold)' : 'var(--text-muted)';
+            const tip = hasAI
+              ? (de ? 'KI-Bericht verfügbar' : 'AI report available')
+              : fallback
+              ? (de ? 'Vorlagenbericht — KI-Kontingent erschöpft' : 'Template report — AI quota exhausted')
+              : (de ? 'Kein Bericht — Generieren klicken' : 'No report yet — click Generate');
             return (
               <button
                 key={l}
                 onClick={() => { stopAudio(); setReportLang(l); }}
-                title={hasReport ? (de ? 'Bericht vorhanden' : 'Report available') : (de ? 'Noch kein Bericht — Generieren klicken' : 'No report yet — click Generate')}
+                title={tip}
                 style={{
                   padding: '5px 14px',
                   fontFamily: 'var(--font-head)',
@@ -286,15 +303,13 @@ const ReportsPage: React.FC = () => {
                   textTransform: 'uppercase',
                   border: `1px solid ${active ? 'var(--gold)' : 'var(--border)'}`,
                   background: active ? 'rgba(200,168,75,0.12)' : 'transparent',
-                  color: active ? 'var(--gold)' : hasReport ? 'var(--text-sec)' : 'var(--text-muted)',
+                  color: active ? 'var(--gold)' : hasText ? 'var(--text-sec)' : 'var(--text-muted)',
                   cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: '5px',
                 }}
               >
                 {l === 'de' ? '🇩🇪 DE' : '🇬🇧 EN'}
-                <span style={{ fontSize: '9px', color: hasReport ? '#4ade80' : 'var(--text-muted)' }}>
-                  {hasReport ? '✓' : '–'}
-                </span>
+                <span style={{ fontSize: '9px', color: indColor }}>{indicator}</span>
               </button>
             );
           })}
@@ -303,19 +318,39 @@ const ReportsPage: React.FC = () => {
           </span>
         </div>
 
-        {/* Both-language confirmation banner */}
-        {reports.de[presenter] && reports.en[presenter] && (
-          <div style={{
-            fontSize: '10px', padding: '6px 10px', marginBottom: '8px',
-            background: 'rgba(74,222,128,0.07)', border: '1px solid rgba(74,222,128,0.2)',
-            color: '#4ade80', display: 'flex', alignItems: 'center', gap: '6px',
-          }}>
-            🇩🇪 ✓ &nbsp;·&nbsp; 🇬🇧 ✓
-            <span style={{ color: 'var(--text-muted)' }}>
-              {de ? '— Bericht in beiden Sprachen verfügbar. Klicke oben auf DE / EN zum Wechseln.' : '— Report available in both languages. Switch DE / EN above.'}
-            </span>
-          </div>
-        )}
+        {/* Status banner — changes based on whether reports are AI or template fallback */}
+        {(() => {
+          const deText = reports.de[presenter];
+          const enText = reports.en[presenter];
+          const deAI   = deText && !isFallback(deText);
+          const enAI   = enText && !isFallback(enText);
+          const deFb   = deText && isFallback(deText);
+          const enFb   = enText && isFallback(enText);
+
+          if (deAI && enAI) return (
+            <div style={{ fontSize: '10px', padding: '6px 10px', marginBottom: '8px',
+              background: 'rgba(74,222,128,0.07)', border: '1px solid rgba(74,222,128,0.2)',
+              color: '#4ade80', display: 'flex', gap: '6px', alignItems: 'center' }}>
+              🇩🇪 ✓ &nbsp;·&nbsp; 🇬🇧 ✓
+              <span style={{ color: 'var(--text-muted)' }}>
+                {de ? '— KI-Bericht in beiden Sprachen. Oben DE / EN wechseln.' : '— AI report in both languages. Switch DE / EN above.'}
+              </span>
+            </div>
+          );
+          if (deFb || enFb) return (
+            <div style={{ fontSize: '10px', padding: '6px 10px', marginBottom: '8px',
+              background: 'rgba(212,180,90,0.07)', border: '1px solid rgba(212,180,90,0.25)',
+              color: 'var(--gold)', display: 'flex', gap: '6px', alignItems: 'center' }}>
+              ⚠️
+              <span style={{ color: 'var(--text-muted)' }}>
+                {de
+                  ? 'Gemini-Tageskontingent erschöpft — Vorlagenbericht wird angezeigt. Morgen wird der KI-Bericht automatisch erneuert.'
+                  : 'Gemini daily quota exhausted — showing template report. The AI report will be regenerated automatically tomorrow.'}
+              </span>
+            </div>
+          );
+          return null;
+        })()}
 
         <div className="wf-report-text-full">
           {reports[reportLang][presenter]
