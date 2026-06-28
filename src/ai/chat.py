@@ -106,7 +106,7 @@ def _build_system_prompt(weather_ctx: dict | None, language: str) -> str:
     lines = [
         "You are WEATHER-FISH Assistant — a smart, friendly weather companion. "
         "Answer weather-related questions clearly and conversationally. "
-        "Keep answers concise (2–4 sentences) unless the user asks for detail. "
+        "For simple questions keep it to 2–4 sentences; for analysis, multi-day forecasts, or chart requests give a detailed structured response. "
         "If asked something unrelated to weather, politely redirect to weather topics."
     ]
 
@@ -143,13 +143,21 @@ def _build_system_prompt(weather_ctx: dict | None, language: str) -> str:
                 lines.append("No significant rain expected today.")
 
         weekone = weather_ctx.get("daily_weekone", {})
-        days = list(weekone.items())
-        if len(days) >= 2:
-            d, data = days[1]
-            lines.append(
-                f"Tomorrow ({d}): {data.get('mintemp')}–{data.get('maxtemp')}°C, "
-                f"{data.get('overcast')}, wind up to {data.get('maxwindspeed')} km/h."
-            )
+        if weekone:
+            day_parts = [
+                f"{d}: {v.get('mintemp')}–{v.get('maxtemp')}°C, {v.get('overcast')}"
+                for d, v in weekone.items()
+            ]
+            lines.append(f"7-day forecast: {' | '.join(day_parts)}.")
+
+        weektwo = weather_ctx.get("daily_weektwo", {})
+        if weektwo:
+            day_parts2 = [
+                f"{d}: {v.get('mintemp')}–{v.get('maxtemp')}°C, {v.get('overcast')}"
+                for d, v in weektwo.items()
+            ]
+            if day_parts2:
+                lines.append(f"Extended forecast (days 8–14): {' | '.join(day_parts2)}.")
 
     lines.append(
         "Respond ONLY in English." if language == "en"
