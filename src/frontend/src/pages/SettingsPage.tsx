@@ -142,8 +142,7 @@ const SettingsPage: React.FC = () => {
   };
 
   const handleRemove = (id: string) => {
-    if (window.confirm(de ? 'Standort entfernen?' : 'Remove location?'))
-      removeLocation(id);
+    removeLocation(id);
   };
 
   const handleRefreshAll = () => {

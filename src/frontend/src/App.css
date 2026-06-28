@@ -2359,3 +2359,157 @@ html, body { overflow-x: hidden; }
   .wf-chat-bubble       { max-width: 96%; }
   .wf-dash-grid         { grid-template-columns: 1fr; }
 }
+
+/* ════════════════════════════════════════════════════════
+   WORKFLOW GUIDE — Onboarding flow on Dashboard
+   ════════════════════════════════════════════════════════ */
+
+.wf-guide {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  border-left: 3px solid var(--gold);
+  padding: 18px 20px 16px;
+  margin-bottom: 4px;
+}
+
+.wf-guide-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.wf-guide-title {
+  font-family: var(--font-head);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+}
+
+.wf-guide-dismiss {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 6px;
+  transition: color 0.15s;
+}
+.wf-guide-dismiss:hover { color: var(--text); }
+
+.wf-guide-progress-track {
+  height: 3px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 2px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.wf-guide-progress-fill {
+  height: 100%;
+  background: var(--gold);
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+.wf-guide-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.wf-guide-step {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+  transition: border-color 0.2s;
+}
+
+.wf-guide-step.done {
+  border-color: rgba(74,222,128,0.25);
+  background: rgba(74,222,128,0.04);
+}
+
+.wf-guide-step-num {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.wf-guide-step.done .wf-guide-step-num {
+  background: rgba(74,222,128,0.15);
+  border-color: rgba(74,222,128,0.4);
+  color: #4ade80;
+}
+
+.wf-guide-step-icon {
+  font-size: 24px;
+  margin-bottom: 2px;
+}
+
+.wf-guide-step-title {
+  font-family: var(--font-head);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  padding-right: 24px;
+}
+
+.wf-guide-step.done .wf-guide-step-title {
+  color: var(--text-sec);
+}
+
+.wf-guide-step-desc {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  flex: 1;
+}
+
+.wf-guide-step-cta {
+  margin-top: 6px;
+  padding: 6px 0;
+  background: none;
+  border: 1px solid var(--gold-border);
+  color: var(--gold);
+  font-family: var(--font-head);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s;
+  width: 100%;
+}
+
+.wf-guide-step-cta:hover {
+  background: var(--gold-dim);
+}
+
+@media (max-width: 900px) {
+  .wf-guide-steps { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .wf-guide { padding: 14px 14px 12px; }
+  .wf-guide-steps { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .wf-guide-step { padding: 11px 10px; }
+  .wf-guide-step-desc { display: none; }
+}

@@ -209,8 +209,8 @@ export default function WeatherSidebar() {
             {loc && (
               <button className="wf-btn-x" onClick={e => {
                 e.stopPropagation();
-                if (confirm('Standort entfernen?')) removeLocation(loc.id);
-              }}>×</button>
+                removeLocation(loc.id);
+              }} title={language === 'de' ? 'Standort entfernen' : 'Remove location'}>×</button>
             )}
           </div>
         );

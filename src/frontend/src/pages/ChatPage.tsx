@@ -3,6 +3,7 @@ import { useLocation } from '../contexts/LocationContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useWeather } from '../contexts/WeatherContext';
 import { getWeatherEmoji } from '../utils/weatherHelpers';
+import { markChatUsed } from '../components/WorkflowGuide';
 
 // ── Types ────────────────────────────────────────────────────────────────────────
 interface Message {
@@ -263,6 +264,11 @@ const ChatPage: React.FC = () => {
     setInput('');
 
     const showChart = wantsChart(msg);
+    // Mark step 4 (chat) complete on first message ever sent
+    if (!localStorage.getItem('wf_chat_used')) {
+      markChatUsed();
+      window.dispatchEvent(new Event('wf_chat_used'));
+    }
     const userMsg: Message = { role: 'user', text: msg, ts: Date.now() };
     const updated = [...messages, userMsg];
     setMessages(updated);

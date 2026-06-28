@@ -4,6 +4,7 @@ import { useLocation } from '../contexts/LocationContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getWeatherEmoji, getConditionLabel } from '../utils/weatherHelpers';
 import { CurrentWeatherData } from '../types/weather';
+import WorkflowGuide from '../components/WorkflowGuide';
 
 interface LocationWeather {
   id: string;
@@ -19,7 +20,16 @@ const DashboardPage: React.FC = () => {
   const de = language === 'de';
 
   const [locationData, setLocationData] = useState<LocationWeather[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]           = useState(false);
+  const [hasReport, setHasReport]       = useState(false);
+
+  // Check if any AI report exists (step 2 of the workflow guide)
+  useEffect(() => {
+    fetch('/api/report/Fisch?lang=de')
+      .then(r => r.ok ? r.json() : null)
+      .then(doc => setHasReport(!!doc?.text))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!savedLocations.length) { setLocationData([]); return; }
@@ -51,14 +61,16 @@ const DashboardPage: React.FC = () => {
         </button>
       </div>
 
+      {/* Onboarding workflow guide — shows until all 4 steps complete */}
+      <WorkflowGuide hasReport={hasReport} />
+
       {savedLocations.length === 0 ? (
-        <div className="wf-empty" style={{ marginTop: '60px' }}>
+        <div className="wf-empty" style={{ marginTop: '40px' }}>
           <div className="wf-empty-icon" style={{ opacity: 1, fontSize: '48px' }}>🌍</div>
           <div className="wf-empty-label">{de ? 'Noch keine Standorte' : 'No locations yet'}</div>
-          <div className="wf-empty-sub">{de ? 'Standorte in Einstellungen hinzufügen' : 'Add locations in Settings'}</div>
-          <button className="wf-btn-primary" style={{ marginTop: '16px' }} onClick={() => navigate('/settings')}>
-            {de ? '⚙️ Zu Einstellungen' : '⚙️ Go to Settings'}
-          </button>
+          <div className="wf-empty-sub">
+            {de ? 'Beginne mit Schritt 1 oben — füge eine PLZ hinzu.' : 'Start with Step 1 above — add a postal code.'}
+          </div>
         </div>
       ) : (
         <>
