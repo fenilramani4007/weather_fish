@@ -2164,3 +2164,122 @@ body {
   .wf-nav-user { padding: 8px 12px; }
   .wf-profile-stats { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ════════════════════════════════════════════════════════
+   RESPONSIVE — COMPREHENSIVE MOBILE FIXES
+   ════════════════════════════════════════════════════════ */
+
+/* Prevent horizontal scroll globally */
+html, body { overflow-x: hidden; }
+
+/* Flex children that could overflow */
+.wf-main { min-width: 0; flex: 1; }
+
+@media (max-width: 640px) {
+
+  /* ── Typography & spacing ── */
+  .wf-header          { padding: 0 12px; height: 50px; }
+  .wf-logo            { font-size: 17px; gap: 7px; }
+  .wf-header-center   { display: none; }
+  .wf-page            { padding: 12px; gap: 12px; }
+  .wf-page-title      { font-size: 18px; letter-spacing: 0.06em; }
+
+  /* ── iOS: prevent auto-zoom on input focus ── */
+  input, textarea, select { font-size: 16px !important; }
+
+  /* ── Minimum tap targets ── */
+  button  { min-height: 38px; }
+
+  /* ── Current weather ── */
+  .wf-w-temp { font-size: 52px; }
+
+  /* ── Forecast grids ── */
+  .wf-week-grid   { grid-template-columns: repeat(2, 1fr); }
+  .wf-period-grid { grid-template-columns: repeat(2, 1fr); }
+
+  /* ── Chat layout — stack context under messages on mobile ── */
+  .wf-chat-layout   { flex-direction: column; }
+  .wf-chat-context  {
+    display: flex !important;        /* override the hide rule */
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: 100%;
+    min-width: 0;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 10px 12px;
+    gap: 8px;
+    overflow: visible;
+  }
+  /* Compact the context card on mobile */
+  .wf-chat-ctx-card   { display: none; }
+  .wf-chat-ctx-tomorrow {
+    margin: 0;
+    padding: 6px 10px;
+    flex-shrink: 0;
+    font-size: 11px;
+  }
+  /* Quick questions scroll horizontally */
+  .wf-chat-quick {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 6px;
+    flex: 1;
+    padding-bottom: 2px;
+  }
+  .wf-chat-quick-btn  {
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding: 6px 10px;
+  }
+  /* Clear history hides on mobile (covered by chat header actions) */
+  .wf-btn-secondary   { font-size: 10px; }
+
+  /* ── Chat messages ── */
+  .wf-chat-messages { padding: 10px 12px; gap: 10px; }
+  .wf-chat-bubble   { max-width: 92%; }
+  .wf-chat-bubble.user { max-width: 88%; }
+
+  /* ── Chat input area ── */
+  .wf-chat-input-area { padding: 8px 10px 10px; }
+  .wf-chat-input      { font-size: 14px !important; }
+  .wf-chat-send       { padding: 0 14px; font-size: 12px; }
+
+  /* ── Profile card — stack on mobile ── */
+  .wf-profile-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .wf-logout-btn { align-self: flex-start; margin-top: 4px; }
+
+  /* ── Dashboard cards ── */
+  .wf-dash-card   { padding: 16px; }
+  .wf-dash-emoji  { font-size: 28px; margin-bottom: 6px; }
+
+  /* ── Login card ── */
+  .wf-login-card  { padding: 28px 20px 22px; }
+
+  /* ── Hobby grid — tighter on small screens ── */
+  .wf-hobby-grid  { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 5px; }
+
+  /* ── Report page ── */
+  .wf-report-audio     { flex-direction: column; gap: 8px; align-items: stretch; }
+
+  /* ── FloatingChat widget stays above mobile browser chrome ── */
+  .wf-float-chat-btn   { bottom: 70px !important; }
+  .wf-float-chat-panel { bottom: 134px !important; }
+
+  /* ── Settings sections full padding ── */
+  .wf-settings-section { padding: 16px; }
+}
+
+@media (max-width: 400px) {
+  /* Very small phones (320–400px) */
+  .wf-w-temp            { font-size: 42px; }
+  .wf-profile-stat-val  { font-size: 18px; }
+  .wf-week-grid         { grid-template-columns: repeat(2, 1fr); }
+  .wf-chat-bubble       { max-width: 96%; }
+  .wf-dash-grid         { grid-template-columns: 1fr; }
+}

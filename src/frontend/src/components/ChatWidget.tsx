@@ -70,6 +70,7 @@ const ChatWidget: React.FC = () => {
       <button
         onClick={() => setOpen(p => !p)}
         title={isDE ? 'Wetter-Assistent' : 'Weather Assistant'}
+        className="wf-float-chat-btn"
         style={{
           position: 'fixed', bottom: '24px', right: '24px', zIndex: 1000,
           width: '52px', height: '52px', borderRadius: '50%',
@@ -85,7 +86,9 @@ const ChatWidget: React.FC = () => {
 
       {/* ── Chat Panel ── */}
       {open && (
-        <div style={{
+        <div
+          className="wf-float-chat-panel"
+          style={{
           position: 'fixed', bottom: '88px', right: '24px', zIndex: 999,
           width: '320px', height: '440px',
           background: '#12122a', border: '1px solid rgba(255,255,255,0.1)',
