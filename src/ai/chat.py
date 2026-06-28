@@ -72,7 +72,7 @@ def reply(
             print(f"[Chat] Exception on {model}: {type(exc).__name__}: {exc}")
             continue
 
-    return _fallback(language)
+    return _context_fallback(message, weather_ctx, language)
 
 
 def _build_prompt(
@@ -92,6 +92,100 @@ def _build_prompt(
             parts.append(f"Assistant: {text}\n")
     parts.append(f"\nUser: {message}\nAssistant:")
     return "".join(parts)
+
+
+def _context_fallback(message: str, weather_ctx: dict | None, language: str) -> str:
+    """
+    Rule-based fallback when all Gemini models are quota-exhausted.
+    Answers common weather questions directly from the context data.
+    """
+    de = language != "en"
+
+    if not weather_ctx:
+        return (
+            "No weather data available for this location yet. Please generate a report first."
+            if not de else
+            "Keine Wetterdaten für diesen Standort. Bitte zuerst einen Bericht generieren."
+        )
+
+    cur     = weather_ctx.get("current", {})
+    city    = weather_ctx.get("city", "")
+    temp    = cur.get("temperature")
+    feels   = cur.get("feels like")
+    humid   = cur.get("humidity")
+    precip  = cur.get("current_precipitation") or "none"
+    sky     = cur.get("overcast", "")
+    wind    = cur.get("wind speed", "–")
+    msg     = message.lower()
+
+    # Rain / umbrella
+    if any(w in msg for w in ["umbrella", "schirm", "regenschirm", "regen", "rain"]):
+        if precip == "rain":
+            return (f"Ja, es regnet gerade in {city} — Regenschirm unbedingt mitnehmen!" if de
+                    else f"Yes, it's currently raining in {city} — definitely bring an umbrella!")
+        else:
+            return (f"Kein Regen in {city} im Moment — kein Schirm nötig." if de
+                    else f"No rain in {city} right now — no umbrella needed.")
+
+    # Clothing / what to wear
+    if any(w in msg for w in ["wear", "anzieh", "kleidung", "outfit", "jacket", "jacke"]):
+        if temp is None:
+            return (f"Aktuelle Temperatur in {city}: unbekannt." if de else f"Temperature data unavailable for {city}.")
+        if temp < 0:
+            tip = ("Winterjacke, Schal, Handschuhe — es ist unter null!" if de
+                   else "Winter coat, scarf and gloves — it's below freezing!")
+        elif temp < 10:
+            tip = ("Warme Jacke und Pullover empfohlen." if de else "Warm jacket and sweater recommended.")
+        elif temp < 18:
+            tip = ("Leichte Jacke oder Pullover reicht." if de else "A light jacket or sweater is enough.")
+        elif temp < 26:
+            tip = ("T-Shirt-Wetter — angenehm!" if de else "T-shirt weather — pleasant!")
+        else:
+            tip = ("Leichte, luftige Kleidung — es ist warm!" if de else "Light, airy clothes — it's warm!")
+        return f"{city}: {temp}°C — {tip}"
+
+    # Tomorrow
+    if any(w in msg for w in ["morgen", "tomorrow"]):
+        weekone = weather_ctx.get("daily_weekone", {})
+        days = list(weekone.items())
+        if len(days) >= 2:
+            d, data = days[1]
+            return (f"Morgen ({d}) in {city}: {data.get('mintemp')}–{data.get('maxtemp')}°C, {data.get('overcast')}." if de
+                    else f"Tomorrow ({d}) in {city}: {data.get('mintemp')}–{data.get('maxtemp')}°C, {data.get('overcast')}.")
+
+    # Next week / forecast / analysis
+    if any(w in msg for w in ["woche", "week", "forecast", "prognose", "vorhersage", "analyse", "analysis", "next"]):
+        weekone = weather_ctx.get("daily_weekone", {})
+        if weekone:
+            lines = []
+            for d, v in list(weekone.items())[:7]:
+                lines.append(f"{d}: {v.get('mintemp')}–{v.get('maxtemp')}°C, {v.get('overcast')}")
+            header = f"7-Tage-Prognose für {city}:" if de else f"7-day forecast for {city}:"
+            return header + "\n" + "\n".join(lines)
+
+    # Warmest time of day
+    if any(w in msg for w in ["wärmst", "warmest", "hottest", "wann warm"]):
+        hourly = weather_ctx.get("hourly", {})
+        if hourly:
+            peak = max(hourly.items(), key=lambda kv: kv[1].get("temperature", -99) if isinstance(kv[1], dict) else -99, default=(None, {}))
+            if peak[0]:
+                return (f"Am wärmsten in {city} um {peak[0]}:00 Uhr mit {peak[1].get('temperature')}°C." if de
+                        else f"Warmest in {city} at {peak[0]}:00 with {peak[1].get('temperature')}°C.")
+
+    # Current conditions (default)
+    if temp is not None:
+        parts = [f"{city}: {temp}°C"]
+        if feels: parts.append(f"({'gefühlt' if de else 'feels like'} {feels}°C)")
+        if sky:   parts.append(sky)
+        if precip == "rain": parts.append("🌧️")
+        if humid: parts.append(f"{'Feuchte' if de else 'Humidity'} {humid}%")
+        return " · ".join(parts)
+
+    return (
+        "Leider sind die KI-Dienste momentan nicht verfügbar. Bitte später erneut versuchen."
+        if de else
+        "AI services are temporarily unavailable. Please try again later."
+    )
 
 
 def _fallback(language: str) -> str:

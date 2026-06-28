@@ -9,7 +9,7 @@ from database import mongo
 from ai import text_generation, tts, context_engine
 
 PRESENTERS = ["Merkel", "Haftbefehl", "Fisch"]
-REPORT_TTL_MINUTES = 20  # skip Gemini if report is newer than this
+REPORT_TTL_MINUTES = 55  # skip Gemini if report is newer than this (scheduler runs hourly)
 
 
 def get_all_weather_data(
