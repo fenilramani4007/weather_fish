@@ -10,6 +10,56 @@ interface Message {
   text: string;
   ts: number;
   showChart?: boolean;
+  tags?: string[];
+}
+
+// ── Agent thinking steps ──────────────────────────────────────────────────────────
+const AGENT_STEPS = {
+  de: [
+    '📡 Wetterdaten abrufen…',
+    '🔍 Prognose-Datenbank durchsuchen…',
+    '🧠 Bedingungen analysieren…',
+    '💬 Antwort generieren…',
+  ],
+  en: [
+    '📡 Fetching live weather data…',
+    '🔍 Scanning forecast database…',
+    '🧠 Reasoning over conditions…',
+    '💬 Preparing response…',
+  ],
+};
+
+const AgentThinking: React.FC<{ lang: string }> = ({ lang }) => {
+  const steps = lang === 'de' ? AGENT_STEPS.de : AGENT_STEPS.en;
+  const [step, setStep] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setStep(s => (s + 1) % steps.length), 1100);
+    return () => clearInterval(t);
+  }, [steps.length]);
+  return (
+    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.55)', display: 'flex', alignItems: 'center', gap: '7px', padding: '4px 0' }}>
+      <span style={{ display: 'inline-block', animation: 'wf-spin 1.2s linear infinite', fontSize: '12px' }}>⚙️</span>
+      {steps[step]}
+    </div>
+  );
+};
+
+// ── Derive action tags from response text ─────────────────────────────────────────
+function pickTags(text: string, lang: string): string[] {
+  const de = lang === 'de';
+  const t  = text.toLowerCase();
+  const tags: string[] = [];
+  if (t.includes('°c') || t.includes('temperature') || t.includes('temperatur'))
+    tags.push(de ? '🌡️ Temperaturdaten' : '🌡️ Temperature data');
+  if (/\d{4}-\d{2}-\d{2}/.test(t) || t.includes('forecast') || t.includes('prognose'))
+    tags.push(de ? '📅 7-Tage-Prognose' : '📅 7-day forecast');
+  if (t.includes(':00') || t.includes('hourly') || t.includes('stündlich'))
+    tags.push(de ? '⏱️ Stundenverlauf' : '⏱️ Hourly data');
+  if (/picnic|cycling|radfahren|hiking|wandern|joggen|running|outdoor|outdoor|sport/.test(t))
+    tags.push(de ? '🎯 Aktivitätsanalyse' : '🎯 Activity analysis');
+  if (t.includes('rain') || t.includes('regen') || t.includes('umbrella') || t.includes('schirm'))
+    tags.push(de ? '🌧️ Niederschlagscheck' : '🌧️ Precipitation check');
+  return tags;
 }
 
 // ── Quick questions ───────────────────────────────────────────────────────────────
@@ -141,7 +191,7 @@ const MiniWeekChart: React.FC<{
 
 // ── Main component ────────────────────────────────────────────────────────────────
 const ChatPage: React.FC = () => {
-  const { currentLocation }             = useLocation();
+  const { currentLocation, savedLocations } = useLocation();
   const { language }                    = useLanguage();
   const { weatherData }                 = useWeather();
   const de = language === 'de';
@@ -225,13 +275,15 @@ const ChatPage: React.FC = () => {
         body: JSON.stringify({
           message:  msg,
           zipcode:  currentLocation?.id ?? '',
+          zipcodes: savedLocations.map(l => l.id),   // all saved locations for multi-city awareness
           history:  messages.slice(-10).map(m => ({ role: m.role, text: m.text })),
           language,
         }),
       });
       const data  = await res.json();
       const reply = data.reply ?? '...';
-      setMessages([...updated, { role: 'model', text: reply, ts: Date.now(), showChart }]);
+      const tags  = pickTags(reply, language);
+      setMessages([...updated, { role: 'model', text: reply, ts: Date.now(), showChart, tags }]);
       speak(reply);
     } catch {
       setMessages([...updated, {
@@ -340,6 +392,19 @@ const ChatPage: React.FC = () => {
                   {m.role === 'model' && m.showChart && weatherData?.daily_weekone && (
                     <MiniWeekChart data={weatherData.daily_weekone} lang={language} />
                   )}
+                  {m.role === 'model' && m.tags && m.tags.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '8px' }}>
+                      {m.tags.map((tag, ti) => (
+                        <span key={ti} style={{
+                          fontSize: '9px', padding: '2px 7px',
+                          background: 'rgba(201,162,39,0.12)',
+                          border: '1px solid rgba(201,162,39,0.25)',
+                          borderRadius: '20px', color: 'rgba(201,162,39,0.8)',
+                          letterSpacing: '0.04em',
+                        }}>{tag}</span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -347,7 +412,9 @@ const ChatPage: React.FC = () => {
             {loading && (
               <div className="wf-chat-bubble model">
                 <div className="wf-chat-bubble-icon">🐟</div>
-                <div className="wf-chat-typing"><span /><span /><span /></div>
+                <div className="wf-chat-bubble-text">
+                  <AgentThinking lang={language} />
+                </div>
               </div>
             )}
             <div ref={bottomRef} />

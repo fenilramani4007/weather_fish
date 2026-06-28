@@ -39,12 +39,13 @@ def reply(
     history: list[dict],
     weather_ctx: dict | None,
     language: str = "de",
+    extra_ctxs: list[dict] | None = None,
 ) -> str:
     if _client is None:
         print("[Chat] reply() called but client is None — returning fallback")
-        return _fallback(language)
+        return _context_fallback(message, weather_ctx, language)
 
-    prompt = _build_prompt(message, history, weather_ctx, language)
+    prompt = _build_prompt(message, history, weather_ctx, language, extra_ctxs or [])
 
     for model in _CHAT_MODELS:
         try:
@@ -80,8 +81,9 @@ def _build_prompt(
     history: list[dict],
     weather_ctx: dict | None,
     language: str,
+    extra_ctxs: list[dict] | None = None,
 ) -> str:
-    system = _build_system_prompt(weather_ctx, language)
+    system = _build_system_prompt(weather_ctx, language, extra_ctxs or [])
     parts = [system, "\n\nConversation so far:\n"]
     for h in history[-8:]:
         role = h.get("role", "")
@@ -326,11 +328,13 @@ def _fallback(language: str) -> str:
     )
 
 
-def _build_system_prompt(weather_ctx: dict | None, language: str) -> str:
+def _build_system_prompt(weather_ctx: dict | None, language: str, extra_ctxs: list[dict] | None = None) -> str:
     lines = [
-        "You are WEATHER-FISH Assistant — a smart, friendly weather companion. "
-        "Answer weather-related questions clearly and conversationally. "
-        "For simple questions keep it to 2–4 sentences; for analysis, multi-day forecasts, or chart requests give a detailed structured response. "
+        "You are WEATHER-FISH Agent — an autonomous weather intelligence system with access to "
+        "real-time weather data, 7–14 day forecasts, hourly breakdowns, and multi-location data. "
+        "Answer weather questions clearly and conversationally. "
+        "For simple questions keep it to 2–4 sentences; for analysis, multi-day forecasts, or comparison requests give a structured detailed response. "
+        "You can reference any of the weather data provided to give contextual, actionable advice. "
         "If asked something unrelated to weather, politely redirect to weather topics."
     ]
 
@@ -382,6 +386,20 @@ def _build_system_prompt(weather_ctx: dict | None, language: str) -> str:
             ]
             if day_parts2:
                 lines.append(f"Extended forecast (days 8–14): {' | '.join(day_parts2)}.")
+
+    if extra_ctxs:
+        summaries = []
+        for ctx in extra_ctxs:
+            city = ctx.get("city", "?")
+            cur  = ctx.get("current", {})
+            summaries.append(
+                f"{city}: {cur.get('temperature')}°C, {cur.get('overcast')}, "
+                f"precip={cur.get('current_precipitation') or 'none'}"
+            )
+        lines.append(
+            f"Other saved locations you can reference: {' | '.join(summaries)}. "
+            "Use this data if the user asks to compare locations or asks about one of these cities."
+        )
 
     lines.append(
         "Respond ONLY in English." if language == "en"

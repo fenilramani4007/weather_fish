@@ -385,7 +385,17 @@ async def chat_endpoint(request: Request):
             raise HTTPException(status_code=400, detail="message is required")
 
         weather_ctx = mongo.get_weather(zipcode) if zipcode else None
-        reply = ai_chat.reply(message, history, weather_ctx, language)
+
+        # Fetch contexts for all other saved locations (enables multi-city comparison)
+        zipcodes    = payload.get("zipcodes", [])
+        extra_ctxs  = [
+            ctx for z in zipcodes
+            if z != zipcode
+            for ctx in [mongo.get_weather(z)]
+            if ctx
+        ]
+
+        reply = ai_chat.reply(message, history, weather_ctx, language, extra_ctxs)
         return {"reply": reply}
 
     except HTTPException:

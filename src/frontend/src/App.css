@@ -782,6 +782,11 @@ body {
 
 .wf-empty-sub { font-size: 11px; color: var(--text-muted); }
 
+@keyframes wf-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
 @keyframes wf-pulse {
   0%, 100% { opacity: 0.4; }
   50%       { opacity: 0.9; }
