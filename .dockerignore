@@ -1,0 +1,29 @@
+# Git
+.git
+.gitignore
+
+# Node — rebuilt inside Docker
+src/frontend/node_modules
+src/frontend/dist
+
+# Python cache
+**/__pycache__
+**/*.pyc
+**/*.pyo
+
+# Dev environment
+src/.env
+src/.cache.sqlite
+src/.idea
+src/database/weather_data
+
+# Docs / presentation files (not needed at runtime)
+content/
+*.md
+*.docx
+*.pptx
+generate_docs.py
+generate_ppt.py
+
+# Speech files generated at runtime
+src/frontend/public/speech

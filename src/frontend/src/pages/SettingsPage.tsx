@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from '../contexts/LocationContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface PostalCodeEntry { plz: string; city: string; }
 
@@ -10,6 +11,7 @@ const HOBBIES_KEY = 'wf_hobbies';
 const SettingsPage: React.FC = () => {
   const { savedLocations, currentLocation, setCurrentLocation, addLocation, removeLocation } = useLocation();
   const { language, setLanguage } = useLanguage();
+  const { user, updateProfile } = useAuth();
   const de = language === 'de';
 
   const [postalCodes, setPostalCodes] = useState<PostalCodeEntry[]>([]);
@@ -21,6 +23,7 @@ const SettingsPage: React.FC = () => {
   const [genStatus, setGenStatus]   = useState('');
   const [schedInfo, setSchedInfo]   = useState<{ next_run: string; last_status: string } | null>(null);
   const [hobbies, setHobbies] = useState<string[]>(() => {
+    if (user?.hobbies?.length) return user.hobbies;
     try { return JSON.parse(localStorage.getItem(HOBBIES_KEY) ?? '[]'); } catch { return []; }
   });
 
@@ -32,8 +35,12 @@ const SettingsPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(HOBBIES_KEY, JSON.stringify(hobbies));
-  }, [hobbies]);
+    if (user?.hobbies) setHobbies(user.hobbies);
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user) localStorage.setItem(HOBBIES_KEY, JSON.stringify(hobbies));
+  }, [hobbies, user]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -212,11 +219,18 @@ const SettingsPage: React.FC = () => {
               <button
                 key={h}
                 className={`wf-hobby-chip ${hobbies.includes(h) ? 'on' : ''}`}
-                onClick={() => setHobbies(prev => prev.includes(h) ? prev.filter(x => x !== h) : [...prev, h])}
+                onClick={() => {
+                  const next = hobbies.includes(h) ? hobbies.filter(x => x !== h) : [...hobbies, h];
+                  setHobbies(next);
+                  if (user) updateProfile({ hobbies: next }).catch(() => {});
+                }}
               >{h}</button>
             ))}
             {hobbies.length > 0 && (
-              <button className="wf-hobby-chip clear" onClick={() => setHobbies([])}>
+              <button className="wf-hobby-chip clear" onClick={() => {
+                setHobbies([]);
+                if (user) updateProfile({ hobbies: [] }).catch(() => {});
+              }}>
                 {de ? 'Alle löschen' : 'Clear all'}
               </button>
             )}

@@ -65,7 +65,7 @@ const ReportsPage: React.FC = () => {
   const { savedLocations, currentLocation, triggerRefresh } = useLocation();
   const { language } = useLanguage();
   const { weatherData } = useWeather();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const navigate = useNavigate();
   const de = language === 'de';
 
@@ -138,7 +138,7 @@ const ReportsPage: React.FC = () => {
     // Only the selected/active city — not all saved locations
     const city    = currentLocation.name.split('–')[1]?.trim() || currentLocation.name;
     const zipcode = currentLocation.id;
-    const activeHobbies = hobbies.length > 0 ? hobbies : ['Gaming', 'Tennis', 'Radfahren'];
+    const activeHobbies = user?.hobbies?.length ? user.hobbies : (hobbies.length > 0 ? hobbies : ['Gaming', 'Tennis', 'Radfahren']);
 
     fetch('/generate-documents', {
       method: 'POST',

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from '../contexts/LocationContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface PostalCodeEntry {
   plz: string;
@@ -24,6 +25,7 @@ export default function WeatherSidebar() {
     triggerRefresh,
   } = useLocation();
   const { language, setLanguage } = useLanguage();
+  const { user, updateProfile } = useAuth();
 
   const [searchQuery, setSearchQuery]     = useState('');
   const [searchResults, setSearchResults] = useState<PostalCodeEntry[]>([]);
@@ -33,6 +35,7 @@ export default function WeatherSidebar() {
   const [refreshing, setRefreshing]       = useState(false);
   const [status, setStatus]               = useState('');
   const [hobbies, setHobbies]             = useState<string[]>(() => {
+    if (user?.hobbies?.length) return user.hobbies;
     try { return JSON.parse(localStorage.getItem(HOBBIES_KEY) ?? '[]'); }
     catch { return []; }
   });
@@ -48,9 +51,15 @@ export default function WeatherSidebar() {
       .catch(console.error);
   }, []);
 
+  // Sync hobbies from profile whenever the user logs in or their profile changes
   useEffect(() => {
-    localStorage.setItem(HOBBIES_KEY, JSON.stringify(hobbies));
-  }, [hobbies]);
+    if (user?.hobbies) setHobbies(user.hobbies);
+  }, [user?.id]);
+
+  // Only persist to localStorage for guest (unauthenticated) users
+  useEffect(() => {
+    if (!user) localStorage.setItem(HOBBIES_KEY, JSON.stringify(hobbies));
+  }, [hobbies, user]);
 
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
 
@@ -78,8 +87,11 @@ export default function WeatherSidebar() {
     setShowDropdown(results.length > 0);
   };
 
-  const toggleHobby = (h: string) =>
-    setHobbies(prev => prev.includes(h) ? prev.filter(x => x !== h) : [...prev, h]);
+  const toggleHobby = (h: string) => {
+    const next = hobbies.includes(h) ? hobbies.filter(x => x !== h) : [...hobbies, h];
+    setHobbies(next);
+    if (user) updateProfile({ hobbies: next }).catch(() => {});
+  };
 
   const activeHobbies = hobbies.length > 0 ? hobbies : ['gaming', 'tennis', 'fahrrad fahren'];
 
