@@ -264,16 +264,20 @@ def _activity_advice(
         if weekend_days:
             lines = []
             for d, v in weekend_days:
-                rain_p = v.get("precipitation", 0) or 0
-                good = (v.get("maxtemp", 99) < 34 and v.get("mintemp", -99) > 3
-                        and rain_p < 40 and v.get("overcast", "") != "overcast")
-                icon  = "✅" if good else "⚠️"
-                day_label = ("Samstag" if datetime.strptime(d, "%Y-%m-%d").weekday() == 5 else "Sonntag") if de else \
-                            ("Saturday" if datetime.strptime(d, "%Y-%m-%d").weekday() == 5 else "Sunday")
+                # "precipitation" in daily data is a string ("rain" or ""), not a percentage
+                rains    = v.get("precipitation", "") == "rain"
+                too_hot  = (v.get("maxtemp") or 0) > 33
+                too_cold = (v.get("mintemp") or 0) < 4
+                good     = not rains and not too_hot and not too_cold and v.get("overcast", "") != "overcast"
+                icon     = "✅" if good else "⚠️"
+                weekday  = datetime.strptime(d, "%Y-%m-%d").weekday()
+                day_label = ("Samstag" if weekday == 5 else "Sonntag") if de else \
+                            ("Saturday" if weekday == 5 else "Sunday")
+                note = (" — " + ("Regen" if de else "rain")) if rains else \
+                       (" — " + ("sehr heiß" if de else "very hot")) if too_hot else \
+                       (" — " + ("zu kalt" if de else "too cold")) if too_cold else ""
                 lines.append(
-                    f"{icon} {day_label} ({d}): {v.get('mintemp')}–{v.get('maxtemp')}°C, "
-                    f"{v.get('overcast')}"
-                    + (f", {rain_p}% {'Regen' if de else 'rain'}" if rain_p > 20 else "")
+                    f"{icon} {day_label} ({d}): {v.get('mintemp')}–{v.get('maxtemp')}°C, {v.get('overcast')}{note}"
                 )
             header = (f"{act} dieses Wochenende in {city}:" if de
                       else f"{act} this weekend in {city}:")
