@@ -23,7 +23,7 @@ def get_coordinates_from_zipcode(zipcode: str) -> tuple[float, float]:
     return data["lat"], data["lon"]
 
 
-def get_coordinates_from_city(city_name: str) -> tuple[float, float]:
+def get_coordinates_from_city(city_name: str) -> tuple[float | None, float | None]:
     """Resolve a city name to (lat, lon) using OpenWeather geocoding."""
     url = f"{GEO_BASE}/direct?q={urllib.parse.quote(city_name)}&limit=1&appid={OPENWEATHER_API_KEY}"
     with urllib.request.urlopen(url) as resp:

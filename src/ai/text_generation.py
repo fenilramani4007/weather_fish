@@ -65,6 +65,7 @@ def prompt(
                 print(f"[Gemini] model={model} attempt={attempt + 1} presenter={person}")
                 response = client.models.generate_content(model=model, contents=prompt_str)
                 print(f"[Gemini] OK — model={model} presenter={person}")
+                assert response.text is not None, "Gemini response missing text"
                 return response.text
 
             except ClientError as exc:
