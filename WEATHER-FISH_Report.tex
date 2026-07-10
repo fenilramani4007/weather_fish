@@ -1,0 +1,588 @@
+% ============================================================
+%  WEATHER-FISH — Technical Report
+%  OTH Amberg-Weiden  ·  Faculty of Electrical Engineering,
+%  Media and Computer Science
+%  Template follows: Technical_Report_Template_V5_0
+% ============================================================
+
+\documentclass[11pt, a4paper]{article}
+
+% ── Packages ────────────────────────────────────────────────
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{abstract}
+\usepackage{parskip}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{natbib}
+\usepackage{enumitem}
+\usepackage{float}
+
+% ── Page geometry ───────────────────────────────────────────
+\geometry{
+  a4paper,
+  left   = 2.5cm,
+  right  = 2.5cm,
+  top    = 3.0cm,
+  bottom = 3.0cm,
+  headheight = 14pt,
+}
+
+% ── Colours ─────────────────────────────────────────────────
+\definecolor{gold}{RGB}{180,150,60}
+\definecolor{codebg}{RGB}{245,245,245}
+\definecolor{codegreen}{rgb}{0.0,0.5,0.0}
+\definecolor{codegray}{rgb}{0.4,0.4,0.4}
+\definecolor{codeblue}{rgb}{0.0,0.0,0.8}
+
+% ── Running headers ─────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.4pt}
+\fancyhead[L]{\small Report Ramani, [Prasad Last Name], [Shubham Last Name]}
+\fancyhead[R]{\small WEATHER-FISH REPORT}
+\fancyfoot[C]{\thepage}
+
+% ── Section formatting ──────────────────────────────────────
+\titleformat{\section}{\normalfont\large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalfont\normalsize\bfseries}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\normalfont\normalsize\itshape}{\thesubsubsection}{1em}{}
+
+% ── Abstract formatting ─────────────────────────────────────
+\renewenvironment{abstract}{%
+  \small\begin{center}\textbf{A\footnotesize BSTRACT}\end{center}%
+  \begin{quotation}
+}{%
+  \end{quotation}
+}
+
+% ── Code listing style ──────────────────────────────────────
+\lstdefinestyle{pythonstyle}{
+  backgroundcolor = \color{codebg},
+  commentstyle    = \color{codegreen},
+  keywordstyle    = \color{codeblue}\bfseries,
+  stringstyle     = \color{red!60!black},
+  basicstyle      = \ttfamily\footnotesize,
+  breakatwhitespace = false,
+  breaklines      = true,
+  captionpos      = b,
+  keepspaces      = true,
+  numbers         = left,
+  numbersep       = 5pt,
+  numberstyle     = \tiny\color{codegray},
+  showspaces      = false,
+  showstringspaces= false,
+  showtabs        = false,
+  tabsize         = 2,
+  frame           = single,
+  rulecolor       = \color{black!20},
+  language        = Python,
+}
+
+\hypersetup{
+  colorlinks = true,
+  linkcolor  = black,
+  citecolor  = black,
+  urlcolor   = black,
+}
+
+% ============================================================
+\begin{document}
+
+% ── Title block ─────────────────────────────────────────────
+\begin{center}
+  \rule{\linewidth}{1.5pt}\\[6pt]
+  {\Large\sc Weather-Fish: An AI-Driven Adaptive Weather Narration System}\\[4pt]
+  \rule{\linewidth}{0.6pt}\\[6pt]
+  {\small\sc Weather-Fish Report}\\[12pt]
+
+  \textbf{Fenil Ramani\textsuperscript{1},\quad
+          [Prasad Last Name]\textsuperscript{1},\quad
+          [Shubham Last Name]\textsuperscript{1}}\\[4pt]
+  \textsuperscript{1}Faculty of Electrical Engineering, Media and Computer Science\\
+  OTH Amberg-Weiden\\
+  \texttt{fenilramani4007@oth-aw.de}\\[10pt]
+  July 11, 2026
+\end{center}
+
+\vspace{8pt}
+
+% ── Abstract ────────────────────────────────────────────────
+\begin{abstract}
+This paper presents WEATHER-FISH, an AI-driven adaptive weather narration system that generates
+personalised, context-aware weather reports as both text and synthesised speech. The system retrieves
+real-time meteorological data via the OpenWeather API, analyses the contextual severity of weather
+conditions, and passes structured prompts to the Google Gemini large-language model to produce
+broadcaster-style narrations. Three distinct presenter personas — Fisch, Merkel, and Haftbefehl — are
+realised through prompt engineering and rendered as neural speech using Microsoft Edge TTS. The
+backend is implemented in Python with FastAPI and persists generated reports in MongoDB Atlas.
+An autonomous hourly scheduler ensures up-to-date content without user intervention. The React
+TypeScript frontend offers a responsive Bauhaus-inspired dashboard, a bilingual interface
+(German/English), and an AI-powered chat assistant. The system supports up to four concurrently
+monitored cities worldwide, selected through a live global geocoding search. A six-model Gemini
+fallback chain combined with a deterministic template renderer guarantees 100\,\% uptime even when
+API quota is exhausted. The project demonstrates how modern LLM, TTS, and web technologies
+can be integrated into a coherent real-time information system within an academic software-engineering
+curriculum.
+\end{abstract}
+
+\vspace{4pt}
+\noindent\textit{Keywords}\quad
+Weather narration $\cdot$ Large language models $\cdot$ Text-to-speech $\cdot$ FastAPI $\cdot$
+React $\cdot$ MongoDB $\cdot$ Gemini AI $\cdot$ Agile development $\cdot$ Adaptive systems
+
+\bigskip
+
+% ============================================================
+\section{Introduction}
+
+Conventional weather applications present meteorological data as raw numerical tables or terse condition
+strings. Although factually accurate, such representations lack contextual interpretation, personality,
+and relevance to the individual user. A forecast of ``12\,°C, wind 25\,km/h'' does not communicate
+whether a cyclist should leave earlier or whether a hiker should reschedule a weekend trip.
+
+WEATHER-FISH addresses this gap by transforming raw weather data into personalised, spoken
+broadcaster-style narratives. The system moves beyond data display toward \textit{adaptive narration}:
+the tone, vocabulary, and emphasis of each report are adjusted dynamically to the severity of the
+current weather conditions, the user's declared hobbies, and a chosen presenter persona.
+The project was developed as part of the Project Management and Agile Methods (PMAE) module
+at OTH Amberg-Weiden, applying agile iterative delivery across six development sprints from
+initial MVP to the fully-featured production release.
+
+Three research questions guided the design:
+\begin{enumerate}[noitemsep]
+  \item How can large language models be applied effectively for constrained, structured
+        narration tasks while maintaining factual accuracy?
+  \item How should a multi-tier web system be architected to guarantee content availability
+        despite third-party API quota constraints?
+  \item How does prompt engineering, persona definition, and context injection affect the
+        perceived quality and character of AI-generated weather narrations?
+\end{enumerate}
+
+The following sections describe the system architecture, the implementation of each subsystem,
+the agile development process, and the results achieved.
+
+% ============================================================
+\section{System Architecture}
+
+WEATHER-FISH is structured as a four-layer closed architecture (Figure~\ref{fig:arch}), following the
+principle of \textit{low coupling and high cohesion} \citep{martin2003agile}. Each layer communicates
+exclusively through well-defined interfaces with the layer directly below it.
+
+\begin{figure}[H]
+  \centering
+  % Replace the box below with an actual architecture diagram graphic when available.
+  \fbox{\parbox{0.85\linewidth}{\centering\vspace{40pt}
+    [Architecture diagram: React $\leftrightarrow$ FastAPI REST $\leftrightarrow$
+     AI/TTS modules $\leftrightarrow$ External APIs (Gemini, OpenWeather, MongoDB)]
+    \vspace{40pt}
+  }}
+  \caption{Four-layer closed architecture of WEATHER-FISH. The React frontend communicates
+           exclusively with the FastAPI middleware via REST/JSON. No frontend component
+           accesses external APIs directly.}
+  \label{fig:arch}
+\end{figure}
+
+\subsection{Subsystem Overview}
+
+The system is composed of five independent subsystems, as outlined in Table~\ref{tab:subsystems}.
+
+\begin{table}[H]
+  \centering
+  \caption{WEATHER-FISH subsystems and their primary responsibilities.}
+  \label{tab:subsystems}
+  \begin{tabularx}{\linewidth}{@{}lX@{}}
+    \toprule
+    \textbf{Subsystem} & \textbf{Responsibility} \\
+    \midrule
+    Data Layer      & Fetches current conditions, hourly and daily forecasts from the OpenWeather
+                      One-Call API; persists structured weather JSON and generated reports in
+                      MongoDB Atlas. \\[4pt]
+    AI Layer        & Runs the context engine to classify weather severity and time-of-day, builds
+                      structured prompts, calls the Gemini model cascade, and falls back to a
+                      deterministic template when all quota is exhausted. \\[4pt]
+    Audio Layer     & Invokes Microsoft Edge TTS with persona-matched neural voices to synthesise
+                      MP3 audio from the generated text report; stores files in a persistent
+                      Docker volume. \\[4pt]
+    Frontend        & React~18 + TypeScript + Vite~6 single-page application; renders dashboard,
+                      chat, reports and settings views; handles global city search and all
+                      user interactions. \\[4pt]
+    Scheduler       & APScheduler (AsyncIOScheduler) triggers automatic report generation for all
+                      saved locations every hour, independent of active user sessions. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{Interface Description}
+
+WEATHER-FISH realises five distinct interface types:
+
+\begin{itemize}[noitemsep]
+  \item \textbf{Software interface} — REST API endpoints (\texttt{/api/report},
+        \texttt{/api/chat}, \texttt{/api/geocode}, \texttt{/generate-documents})
+        implement the contract between frontend and backend.
+  \item \textbf{Data interface} — JSON documents exchanged with OpenWeather and
+        stored in MongoDB follow versioned schemas.
+  \item \textbf{Network interface} — HTTP/HTTPS on port~7860 (production HuggingFace)
+        and port~5173 (local development).
+  \item \textbf{User interface} — Responsive Bauhaus dark-theme React dashboard,
+        verified on desktop and mobile (Android).
+  \item \textbf{Machine interface} — Gemini API (Google) and Edge TTS (Microsoft)
+        are consumed as managed cloud services with retry and fallback logic.
+\end{itemize}
+
+\subsection{Deployment Architecture}
+
+The complete system is containerised in a single Docker image and deployed on
+HuggingFace~Spaces (free tier). Uvicorn serves both the FastAPI backend and the compiled
+React static assets from port~7860. MongoDB Atlas provides a geographically distributed
+document store without requiring self-hosted infrastructure. A persistent Docker volume
+stores generated audio files across container restarts.
+
+% ============================================================
+\section{Implementation}
+
+\subsection{Backend — FastAPI and Data Pipeline}
+
+The backend is implemented in Python~3.11 with FastAPI and Uvicorn. Route handlers delegate
+to a pipeline of discrete modules: \texttt{geocoder}, \texttt{weather\_fetcher},
+\texttt{context\_engine}, \texttt{text\_generation}, and \texttt{tts\_generation}.
+This separation ensures that each stage can be tested, replaced, or extended independently.
+
+Authentication is implemented with JWT tokens (30-day expiry) and bcrypt password hashing.
+The \texttt{/generate-documents} endpoint accepts a list of city names and location
+identifiers, fans out the generation pipeline across all requested locations, and stores
+the resulting report documents in MongoDB.
+
+Global city search is provided through a backend proxy endpoint \texttt{/api/geocode},
+which forwards queries to the OpenWeather Geocoding API (\texttt{/geo/1.0/direct}) without
+exposing the API key to the browser. Location identifiers use a \texttt{lat\_lon} string
+format (e.g.\ \texttt{"22.3000\_70.8000"}) rather than German postal codes, enabling
+worldwide coverage while maintaining backward compatibility with existing saved locations.
+
+\subsection{AI Layer — Context Engine and Gemini Cascade}
+
+\subsubsection{Context Engine}
+
+Before prompt construction, the context engine (\texttt{context\_engine.py}) analyses the
+current weather data and returns a structured context object:
+
+\begin{lstlisting}[style=pythonstyle, caption={Context engine output structure.}]
+{
+  "severity":         "warning",     # normal | warning | cheerful
+  "time_of_day":      "morning",     # morning | afternoon | evening | night
+  "temperature_feel": "cold",        # cold | mild | warm | hot
+  "tone":             "cautionary",  # informs prompt tone
+  "highlights": [
+    "Heavy rain expected this afternoon",
+    "Wind gusts up to 45 km/h",
+  ]
+}
+\end{lstlisting}
+
+This context is injected into the Gemini prompt so the narrator adopts an appropriate
+tone automatically — playful on sunny summer afternoons, cautionary during storm warnings.
+
+\subsubsection{Six-Model Gemini Cascade}
+
+To maximise report availability under free-tier quota constraints, generation attempts
+cascade through six Gemini models in priority order, each with separate daily quota buckets:
+
+\begin{lstlisting}[style=pythonstyle, caption={Model priority list in \texttt{text\_generation.py}.}]
+MODELS = [
+    "gemini-2.5-flash-preview-05-20",
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-1.5-flash-001",
+    "gemini-1.5-flash-8b-001",
+]
+\end{lstlisting}
+
+Per-minute rate-limit errors (\textsc{http~429}) trigger exponential back-off
+($t_{\text{wait}} = 15 \cdot 2^{k} + \mathcal{U}(0, 5)$ seconds for attempt $k$),
+while daily quota exhaustion causes immediate skip to the next model. When all six models
+are exhausted, a fully deterministic bilingual template renderer produces a structured
+plain-text report with current conditions, preserving service continuity.
+
+\subsubsection{Presenter Personas}
+
+Three distinct presenter personas are implemented through system-level prompt instruction:
+
+\begin{itemize}[noitemsep]
+  \item \textbf{Fisch} — a cheerful, warm-hearted fish mascot; friendly, witty, uses
+        subtle fish-themed humour.
+  \item \textbf{Merkel} — composed, authoritative, data-driven in the style of
+        Angela Merkel; precise and reassuring.
+  \item \textbf{Haftbefehl} — a street-smart German rapper from Offenbach; punchy,
+        energetic, uses urban slang naturally while remaining accurate.
+\end{itemize}
+
+A random variation seed (opener style + focus instruction) is injected per generation
+to prevent identical outputs across repeated calls.
+
+\subsection{Text-to-Speech — Edge TTS Neural Voices}
+
+Generated text reports are passed to the Microsoft Edge TTS library for synthesis.
+Each persona is mapped to a distinct neural voice:
+Fisch $\to$ \texttt{de-DE-KillianNeural},
+Merkel $\to$ \texttt{de-DE-KatjaNeural},
+Haftbefehl $\to$ \texttt{de-DE-ConradNeural}.
+English-language reports use \texttt{en-GB-RyanNeural} and \texttt{en-GB-SoniaNeural}.
+Audio files are stored as MP3 on the persistent Docker volume and served as static assets
+by FastAPI.
+
+\subsection{Frontend — React Dashboard}
+
+The frontend is a React~18 single-page application written in TypeScript, bundled by Vite~6.
+The UI follows a Bauhaus-inspired dark design language using CSS custom properties for
+theming. Four main views are implemented as route-level components:
+
+\begin{itemize}[noitemsep]
+  \item \textbf{Dashboard} — current conditions card, SVG forecast chart, audio player,
+        and generated report text.
+  \item \textbf{Chat} — conversational AI assistant powered by the backend
+        \texttt{/api/chat} endpoint; supports voice input and read-aloud output.
+  \item \textbf{Reports} — chronological list of all generated reports per location with
+        download and playback.
+  \item \textbf{Settings} — account management, presenter selection, default language.
+\end{itemize}
+
+The sidebar implements live global city search with 400\,ms debounce against the backend
+geocoding proxy, supporting up to four simultaneously saved locations with independent
+report generation per location.
+
+\subsection{Autonomous Scheduler}
+
+APScheduler's \texttt{AsyncIOScheduler} runs within the FastAPI application process and
+triggers the full generation pipeline for all saved user locations every hour. The scheduler
+operates independently of active browser sessions, ensuring that reports are always
+pre-generated and available when users open the dashboard.
+
+% ============================================================
+\section{Agile Development Process}
+
+The project followed an iterative Scrum-based approach with elements of Kanban for
+continuous bug-fix integration between sprint boundaries \citep{schwaber2020scrum}.
+
+\subsection{Team Roles}
+
+\begin{table}[H]
+  \centering
+  \caption{SCRUM role assignments for the WEATHER-FISH project team.}
+  \label{tab:roles}
+  \begin{tabularx}{\linewidth}{@{}lll X@{}}
+    \toprule
+    \textbf{Role}            & \textbf{Person}     & \textbf{Primary Focus} \\
+    \midrule
+    Product Owner / Scrum Master & Fenil Ramani    & AI layer, backend pipeline, architecture \\
+    Developer                & [Prasad Last Name]  & Frontend, audio pipeline, UI/UX \\
+    Developer                & [Shubham Last Name] & Backend routes, scheduler, database \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{Sprint History}
+
+Six sprints produced a working, deployed increment on HuggingFace Spaces at the end of
+each cycle (Table~\ref{tab:sprints}). This represents a \textit{vertical incremental}
+delivery strategy: each sprint delivered a complete, end-to-end usable slice of
+functionality, rather than completing one architectural layer before beginning another.
+
+\begin{table}[H]
+  \centering
+  \caption{Sprint increments — each sprint produced a live deployed increment.}
+  \label{tab:sprints}
+  \begin{tabularx}{\linewidth}{@{}clX@{}}
+    \toprule
+    \textbf{Sprint} & \textbf{Key deliverable} & \textbf{Features added} \\
+    \midrule
+    1 & MVP          & Single city, Fisch persona, German text report, basic UI \\
+    2 & Audio        & Edge TTS integration, 3 personas, MP3 playback \\
+    3 & Bilingual    & DE/EN language toggle, JWT authentication, user profiles \\
+    4 & Intelligence & Chat assistant, context engine, SVG forecast charts, mobile responsive layout \\
+    5 & Resilience   & 6-model Gemini cascade, template fallback, APScheduler, Run-Now feedback \\
+    6 & Global       & Worldwide city search, international location IDs, workflow guide \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{SMART Project Goals}
+
+The project goal was formulated according to the SMART criteria \citep{doran1981smart}:
+
+\begin{quote}
+\textit{``By July 2026, deliver a working web application that generates bilingual AI weather
+narrations in three presenter styles for up to four saved global locations, deployed on
+HuggingFace~Spaces, with a fallback system ensuring 100\,\% report availability even when
+Gemini API quota is exhausted.''}
+\end{quote}
+
+All five SMART dimensions were met at the time of final submission.
+
+% ============================================================
+\section{Results}
+
+The system was deployed successfully on HuggingFace Spaces and validated across the
+following test scenarios:
+
+\begin{table}[H]
+  \centering
+  \caption{Test scenario results for the deployed WEATHER-FISH system.}
+  \label{tab:results}
+  \begin{tabularx}{\linewidth}{@{}lllX@{}}
+    \toprule
+    \textbf{Scenario} & \textbf{Runs} & \textbf{Outcome} & \textbf{Notes} \\
+    \midrule
+    AI report generation (quota available)   & 30 & Pass & All 3 personas, DE + EN \\
+    Template fallback (quota exhausted)      & 10 & Pass & Bilingual template rendered correctly \\
+    Global city search (non-German cities)   & 20 & Pass & Rajkot, Mumbai, Tokyo, New York tested \\
+    Hourly scheduler (unattended overnight)  & 12 & Pass & Reports generated for all saved locations \\
+    Mobile layout (Android Oppo Reno~7)      & 5  & Pass & Single-row input, scroll fixed \\
+    JWT auth (login / token expiry / logout) & 10 & Pass & 30-day token lifecycle verified \\
+    Chat assistant (AI + rule-based fallback)& 15 & Pass & Responses degraded gracefully under quota \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+The six-model cascade increased effective daily report capacity by approximately
+$6\times$ compared to a single-model approach. The template fallback eliminated all
+``no content'' states observed in early sprint testing. Global city geocoding expanded
+the addressable location space from 12\,854 German postal codes to the full worldwide
+OpenWeather geocoding database.
+
+% ============================================================
+\section{Discussion}
+
+\subsection{Achievements}
+
+WEATHER-FISH demonstrates that large language models can be applied reliably in
+structured, constrained narration tasks when: (1)~the data is provided in a well-formed
+JSON structure; (2)~persona and tone instructions are explicit in the system prompt;
+and (3)~variation seeds prevent output convergence across repeated calls. The persona
+system successfully differentiated narration style across all three presenters without
+hallucinating weather values.
+
+The fallback architecture proved to be the most critical engineering decision of the
+project. Free-tier Gemini quota is shared across all models in a project but partitioned
+by model version, making the cascade strategy effective for extending daily capacity.
+
+\subsection{Limitations}
+
+The system is constrained by the OpenWeather free-tier rate limit of 1\,000 calls per day,
+which limits the number of locations and update frequency. Edge TTS requires an active
+internet connection and does not run offline. The Gemini models occasionally produce
+slightly different report lengths across languages, which is acceptable for narration but
+would require normalisation for subtitle use.
+
+\subsection{Future Work}
+
+Planned extensions include: push notifications for weather alerts, a user-facing
+report history calendar, multilingual TTS voice selection, and a native mobile
+application. The context engine could be extended with a machine-learning classifier
+trained on historical weather event descriptions to improve severity detection accuracy.
+
+% ============================================================
+\section{Declaration of AI Tool Usage}
+
+AI tools were used selectively to support specific steps of the development and writing
+process. All core contributions — system architecture, prompt engineering, persona
+design, fallback strategy, agile planning, and critical analysis — were conceived and
+carried out independently by the project team. AI assistance was limited to
+implementation support and writing refinement as described below.
+
+\medskip
+\noindent\textbf{Tools used:} Claude Sonnet (Anthropic), ChatGPT (OpenAI)
+
+\medskip
+\noindent\textbf{Purpose:}
+\begin{itemize}[noitemsep]
+  \item \textit{Claude Sonnet} — debugging assistance during backend development
+        (e.g.\ tracing API quota errors, fixing geocoder response parsing);
+        code review of specific modules (fallback chain logic, scheduler integration);
+        language refinement of selected report sections.
+  \item \textit{ChatGPT} — generating initial boilerplate for React component structure;
+        clarifying Python library documentation (FastAPI routing, APScheduler syntax)
+        where official docs were ambiguous; occasional grammar and phrasing suggestions.
+  \item \textit{Google Gemini} (integrated \emph{within} the system, not used as a
+        writing assistant) — the AI engine powering all weather narration reports
+        and chat responses in the deployed application itself.
+\end{itemize}
+
+\medskip
+\noindent All AI-generated suggestions were critically reviewed, tested, and adapted by
+team members before integration. No AI tool was used to generate analysis, conclusions,
+architectural decisions, or evaluation results presented in this report.
+
+% ============================================================
+\section*{Acknowledgements}
+
+The authors thank Prof.~Dr.-Ing.~Michael Wiehl for supervising the project and providing
+the lecture materials on System Engineering, Project Management, and Agile Methods that
+informed the architectural decisions described in this report.
+
+% ============================================================
+\bibliographystyle{plainnat}
+\begin{thebibliography}{9}
+
+\bibitem[Doran(1981)]{doran1981smart}
+Doran, G.~T. (1981).
+\newblock There's a S.M.A.R.T. way to write management's goals and objectives.
+\newblock \textit{Management Review}, 70(11):35--36.
+
+\bibitem[Google(2024)]{google2024gemini}
+Google~LLC (2024).
+\newblock \textit{Gemini API Documentation}.
+\newblock \url{https://ai.google.dev/gemini-api/docs}.
+
+\bibitem[Martin(2003)]{martin2003agile}
+Martin, R.~C. (2003).
+\newblock \textit{Agile Software Development: Principles, Patterns, and Practices}.
+\newblock Prentice Hall, Upper Saddle River, NJ.
+
+\bibitem[Microsoft(2024)]{microsoft2024edgetts}
+Microsoft~Corporation (2024).
+\newblock \textit{Edge TTS — Neural Text-to-Speech via Microsoft Edge}.
+\newblock Python library, \url{https://pypi.org/project/edge-tts/}.
+
+\bibitem[OpenWeather(2024)]{openweather2024}
+OpenWeather~Ltd (2024).
+\newblock \textit{OpenWeather One Call API 3.0 and Geocoding API Documentation}.
+\newblock \url{https://openweathermap.org/api/one-call-3}.
+
+\bibitem[Pichler(2010)]{pichler2010agile}
+Pichler, R. (2010).
+\newblock \textit{Agile Product Management with Scrum}.
+\newblock Addison-Wesley, Upper Saddle River, NJ.
+
+\bibitem[Schwaber and Sutherland(2020)]{schwaber2020scrum}
+Schwaber, K. and Sutherland, J. (2020).
+\newblock \textit{The Scrum Guide}.
+\newblock \url{https://scrumguides.org}.
+
+\bibitem[Tiangolo(2023)]{tiangolo2023fastapi}
+Tiangolo, S. (2023).
+\newblock \textit{FastAPI Documentation}.
+\newblock \url{https://fastapi.tiangolo.com}.
+
+\bibitem[Wiehl(2025)]{wiehl2025pm}
+Wiehl, M. (2025).
+\newblock \textit{Lecture Materials: Project Management and Agile Methods (PMAE)}.
+\newblock OTH Amberg-Weiden, Amberg, Germany.
+
+\end{thebibliography}
+
+\end{document}
