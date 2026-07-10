@@ -354,9 +354,9 @@ def _build_system_prompt(weather_ctx: dict | None, language: str, extra_ctxs: li
         hourly = weather_ctx.get("hourly", {})
         if hourly:
             temps = [
-                e.get("temperature")
+                t
                 for e in hourly.values()
-                if isinstance(e, dict) and e.get("temperature") is not None
+                if isinstance(e, dict) and (t := e.get("temperature")) is not None
             ]
             rain_hours = [
                 h for h, e in hourly.items()
