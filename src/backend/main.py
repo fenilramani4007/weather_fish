@@ -100,6 +100,22 @@ app.add_middleware(
 )
 
 
+# ── GET /api/geocode ──────────────────────────────────────────────────────────
+
+from backend import geocoder as _geocoder
+
+@app.get("/api/geocode")
+def geocode_search(q: str = ""):
+    """Search cities worldwide — proxies OpenWeather geocoding (keeps API key server-side)."""
+    if len(q.strip()) < 2:
+        return []
+    try:
+        return _geocoder.search_cities(q)
+    except Exception as exc:
+        print(f"[Geocode] search error: {exc}")
+        return []
+
+
 # ── GET /api/info ─────────────────────────────────────────────────────────────
 
 @app.get("/api/info")

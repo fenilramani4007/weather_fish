@@ -3,9 +3,13 @@ import { useLocation } from '../contexts/LocationContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 
-interface PostalCodeEntry {
-  plz: string;
-  city: string;
+interface CityResult {
+  name:    string;
+  country: string;
+  state:   string;
+  lat:     number;
+  lon:     number;
+  id:      string;
 }
 
 const ALL_HOBBIES = [
@@ -28,10 +32,10 @@ export default function WeatherSidebar() {
   const { user, updateProfile } = useAuth();
 
   const [searchQuery, setSearchQuery]     = useState('');
-  const [searchResults, setSearchResults] = useState<PostalCodeEntry[]>([]);
+  const [searchResults, setSearchResults] = useState<CityResult[]>([]);
   const [showDropdown, setShowDropdown]   = useState(false);
   const [searchError, setSearchError]     = useState('');
-  const [postalCodes, setPostalCodes]     = useState<PostalCodeEntry[]>([]);
+  const [isSearching, setIsSearching]     = useState(false);
   const [refreshing, setRefreshing]       = useState(false);
   const [status, setStatus]               = useState('');
   const [hobbies, setHobbies]             = useState<string[]>(() => {
@@ -43,13 +47,7 @@ export default function WeatherSidebar() {
 
   const pollRef      = useRef<ReturnType<typeof setInterval> | null>(null);
   const dropdownRef  = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    fetch('/postal_codes/postal_codes.json')
-      .then(r => r.json())
-      .then(setPostalCodes)
-      .catch(console.error);
-  }, []);
+  const debounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Sync hobbies from profile whenever the user logs in or their profile changes
   useEffect(() => {
@@ -77,14 +75,26 @@ export default function WeatherSidebar() {
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
     setSearchError('');
-    if (value.trim().length < 2) { setSearchResults([]); setShowDropdown(false); return; }
-    const q = value.trim().toLowerCase();
-    const isDigits = /^\d+$/.test(q);
-    const results = postalCodes
-      .filter(e => isDigits ? e.plz.startsWith(q) : e.city.toLowerCase().includes(q))
-      .slice(0, 8);
-    setSearchResults(results);
-    setShowDropdown(results.length > 0);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (value.trim().length < 2) {
+      setSearchResults([]);
+      setShowDropdown(false);
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const res  = await fetch(`/api/geocode?q=${encodeURIComponent(value.trim())}`);
+        const data: CityResult[] = await res.json();
+        setSearchResults(data);
+        setShowDropdown(data.length > 0);
+      } catch {
+        setSearchResults([]);
+        setShowDropdown(false);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 400);
   };
 
   const toggleHobby = (h: string) => {
@@ -120,19 +130,26 @@ export default function WeatherSidebar() {
       });
   };
 
-  const handleSelect = (entry: PostalCodeEntry) => {
+  const handleSelect = (result: CityResult) => {
     setSearchQuery('');
     setSearchResults([]);
     setShowDropdown(false);
     setSearchError('');
-    if (savedLocations.length >= 4) { setSearchError('Maximal 4 Standorte.'); return; }
-    if (savedLocations.some(l => l.id === entry.plz)) {
-      setSearchError(`${entry.city} bereits hinzugefügt.`); return;
+    if (savedLocations.length >= 4) {
+      setSearchError(language === 'de' ? 'Maximal 4 Standorte.' : 'Maximum 4 locations.');
+      return;
     }
-    addLocation({ id: entry.plz, name: `${entry.plz} – ${entry.city}`, lat: 0, lon: 0 });
+    if (savedLocations.some(l => l.id === result.id)) {
+      setSearchError(language === 'de' ? `${result.name} bereits hinzugefügt.` : `${result.name} already added.`);
+      return;
+    }
+    const displayName = result.state
+      ? `${result.name}, ${result.state}, ${result.country}`
+      : `${result.name}, ${result.country}`;
+    addLocation({ id: result.id, name: displayName, lat: result.lat, lon: result.lon });
     setRefreshing(true); setStatus('Generiert…');
     _startPolling();
-    _runGeneration([entry.city], [entry.plz]);
+    _runGeneration([result.name], [result.id]);
   };
 
   const handleRefreshAll = () => {
@@ -140,7 +157,12 @@ export default function WeatherSidebar() {
     setRefreshing(true); setStatus('Generiert…');
     _startPolling();
     _runGeneration(
-      savedLocations.map(l => l.name.slice(l.id.length + 3)),
+      savedLocations.map(l => {
+        // Old German format: "90403 – Nürnberg" → "Nürnberg"
+        if (l.name.includes(' – ')) return l.name.split(' – ')[1];
+        // New international format: "Rajkot, Gujarat, IN" → "Rajkot"
+        return l.name.split(',')[0].trim();
+      }),
       savedLocations.map(l => l.id),
     );
   };
@@ -151,16 +173,22 @@ export default function WeatherSidebar() {
       <div className="wf-section" style={{ marginTop: 0 }}>Standorte</div>
 
       <div ref={dropdownRef} style={{ position: 'relative' }}>
-        <div className="wf-form-row">
+        <div className="wf-form-row" style={{ position: 'relative' }}>
           <input
             className="wf-input"
-            style={{ flex: 1 }}
-            placeholder="PLZ oder Stadt…"
+            style={{ flex: 1, paddingRight: isSearching ? '28px' : undefined }}
+            placeholder={language === 'de' ? 'Stadt suchen… (z.B. Rajkot, Berlin)' : 'Search city… (e.g. Mumbai, Berlin)'}
             value={searchQuery}
             onChange={e => handleSearchChange(e.target.value)}
             onFocus={() => searchResults.length > 0 && setShowDropdown(true)}
             disabled={refreshing}
           />
+          {isSearching && (
+            <span style={{
+              position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
+              fontSize: '12px', color: 'var(--text-muted)',
+            }}>⏳</span>
+          )}
         </div>
 
         {showDropdown && (
@@ -168,22 +196,27 @@ export default function WeatherSidebar() {
             position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
             background: 'var(--card-bg, #1a1a2e)', border: '1px solid var(--border)',
             borderRadius: '6px', boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
-            maxHeight: '200px', overflowY: 'auto',
+            maxHeight: '220px', overflowY: 'auto',
           }}>
-            {searchResults.map(e => (
+            {searchResults.map(r => (
               <div
-                key={e.plz}
-                onClick={() => handleSelect(e)}
+                key={r.id}
+                onClick={() => handleSelect(r)}
                 style={{
                   padding: '8px 12px', cursor: 'pointer', fontSize: '12px',
                   borderBottom: '1px solid var(--border)',
-                  display: 'flex', justifyContent: 'space-between',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 }}
                 onMouseEnter={ev => (ev.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
                 onMouseLeave={ev => (ev.currentTarget.style.background = 'transparent')}
               >
-                <span style={{ color: 'var(--text-main, #eee)' }}>{e.city}</span>
-                <span style={{ color: 'var(--text-muted, #888)', marginLeft: '8px' }}>{e.plz}</span>
+                <span style={{ color: 'var(--text-main, #eee)' }}>
+                  {r.name}{r.state ? `, ${r.state}` : ''}
+                </span>
+                <span style={{
+                  color: 'var(--gold, #d4b45a)', marginLeft: '8px',
+                  fontSize: '10px', fontWeight: 600, letterSpacing: '0.05em',
+                }}>{r.country}</span>
               </div>
             ))}
           </div>
