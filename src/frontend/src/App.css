@@ -58,7 +58,8 @@ body {
 .wf-app {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 /* ────────────────────── HEADER ────────────────────────── */
@@ -126,6 +127,8 @@ body {
 .wf-body {
   display: flex;
   flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* ────────────────────── SIDEBAR ───────────────────────── */
@@ -796,7 +799,8 @@ body {
 /* ────────────────────── RESPONSIVE ────────────────────── */
 
 @media (max-width: 900px) {
-  .wf-body        { flex-direction: column; }
+  .wf-app         { height: auto; overflow: visible; }
+  .wf-body        { flex-direction: column; min-height: 0; overflow: visible; }
   .wf-sidebar     { width: 100%; min-width: 0; border-right: none; border-bottom: 1px solid var(--border); padding: 14px; }
   .wf-hero-row    { grid-template-columns: 1fr; }
   .wf-period-grid { grid-template-columns: repeat(2, 1fr); }
