@@ -52,7 +52,7 @@ export default function WeatherSidebar() {
   // Sync hobbies from profile whenever the user logs in or their profile changes
   useEffect(() => {
     if (user?.hobbies) setHobbies(user.hobbies);
-  }, [user?.id]);
+  }, [user?.hobbies]);
 
   // Only persist to localStorage for guest (unauthenticated) users
   useEffect(() => {

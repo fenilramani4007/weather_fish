@@ -70,6 +70,7 @@ const isFallback = (text: string) =>
 
 const ReportsPage: React.FC = () => {
   const { savedLocations, currentLocation, triggerRefresh } = useLocation();
+  const currentLocationId = currentLocation?.id;
   const { language } = useLanguage();
   const { weatherData } = useWeather();
   const { token, user } = useAuth();
@@ -117,8 +118,8 @@ const ReportsPage: React.FC = () => {
   };
 
   useEffect(() => {
-    if (currentLocation) loadAllReports();
-  }, [currentLocation?.id]);
+    if (currentLocationId) loadAllReports();
+  }, [currentLocationId]);
 
   // Sync report language when global language changes
   useEffect(() => { setReportLang(language as LangKey); }, [language]);

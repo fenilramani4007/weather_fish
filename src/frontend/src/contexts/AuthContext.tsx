@@ -37,7 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(u => { setUser(u); localStorage.setItem(USER_KEY, JSON.stringify(u)); })
       .catch(() => { setToken(null); setUser(null); localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); });
-  }, []);
+  }, [token]);
 
   const _persist = (t: string, u: AuthUser) => {
     setToken(t); setUser(u);

@@ -110,7 +110,7 @@ const TextReport: React.FC = () => {
             : 'Report not yet available. Please generate a location first.'
         )
       );
-  }, [activeMascot, savedLocations.length, refreshTick, language]);
+  }, [activeMascot, savedLocations.length, refreshTick, language, de]);
 
   // Stop audio when all locations removed
   useEffect(() => {

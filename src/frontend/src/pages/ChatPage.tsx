@@ -14,6 +14,27 @@ interface Message {
   tags?: string[];
 }
 
+interface SpeechRecognitionResultEvent extends Event {
+  results: ArrayLike<ArrayLike<{ transcript: string }>>;
+}
+
+interface SpeechRecognitionInstance {
+  lang: string;
+  interimResults: boolean;
+  onresult: ((event: SpeechRecognitionResultEvent) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance;
+
+type SpeechRecognitionWindow = Window & typeof globalThis & {
+  SpeechRecognition?: SpeechRecognitionConstructor;
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
+};
+
 // ── Agent thinking steps ──────────────────────────────────────────────────────────
 const AGENT_STEPS = {
   de: [
@@ -92,7 +113,7 @@ const wantsChart = (text: string) =>
 
 // ── Link-aware text renderer ──────────────────────────────────────────────────────
 const MessageContent: React.FC<{ text: string }> = ({ text }) => {
-  const LINK_RE = /\[([^\]]+)\]\((https?:\/\/[^\)]+)\)|(https?:\/\/\S+)/g;
+  const LINK_RE = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)|(https?:\/\/\S+)/g;
 
   const parseLine = (line: string, key: number) => {
     const nodes: React.ReactNode[] = [];
@@ -205,7 +226,7 @@ const ChatPage: React.FC = () => {
 
   const bottomRef      = useRef<HTMLDivElement>(null);
   const inputRef       = useRef<HTMLTextAreaElement>(null);
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -225,12 +246,13 @@ const ChatPage: React.FC = () => {
       setListening(false);
       return;
     }
-    const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
+    const speechWindow = window as SpeechRecognitionWindow;
+    const SR = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
     if (!SR) return;
     const rec = new SR();
     rec.lang           = de ? 'de-DE' : 'en-GB';
     rec.interimResults = false;
-    rec.onresult = (e: any) => {
+    rec.onresult = (e) => {
       const transcript = e.results[0][0].transcript;
       setListening(false);
       send(transcript);

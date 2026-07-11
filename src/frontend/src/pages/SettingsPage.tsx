@@ -43,7 +43,7 @@ const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     if (user?.hobbies) setHobbies(user.hobbies);
-  }, [user?.id]);
+  }, [user?.hobbies]);
 
   useEffect(() => {
     if (!user) localStorage.setItem(HOBBIES_KEY, JSON.stringify(hobbies));
@@ -198,7 +198,9 @@ const SettingsPage: React.FC = () => {
             : `❌ ${data.last_status}`);
           setTimeout(() => setSchedMsg(''), 6000);
         }
-      } catch {}
+      } catch {
+        setSchedInfo(null);
+      }
 
       if (polls > 60) {          // 3 min timeout
         clearInterval(poll);

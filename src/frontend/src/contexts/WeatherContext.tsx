@@ -18,11 +18,12 @@ export const WeatherProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [tick, setTick]               = useState(0);
 
   const { currentLocation, refreshTick } = useLocation();
+  const currentLocationId = currentLocation?.id;
 
   const refetch = () => setTick(t => t + 1);
 
   useEffect(() => {
-    if (!currentLocation) {
+    if (!currentLocationId) {
       setWeatherData(null);
       setError(null);
       return;
@@ -32,7 +33,7 @@ export const WeatherProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setIsLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/weather/${currentLocation.id}`);
+        const res = await fetch(`/api/weather/${currentLocationId}`);
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.detail ?? `HTTP ${res.status}`);
@@ -56,7 +57,7 @@ export const WeatherProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     load();
-  }, [currentLocation?.id, tick, refreshTick]);
+  }, [currentLocationId, tick, refreshTick]);
 
   return (
     <WeatherContext.Provider value={{ weatherData, isLoading, error, refetch }}>

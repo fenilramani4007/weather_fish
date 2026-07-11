@@ -41,7 +41,7 @@ const NavSidebar: React.FC<NavSidebarProps> = ({ isOpen, onClose }) => {
         }
       })
       .catch(() => {});
-  }, [routerLoc.pathname]);
+  }, [routerLoc.pathname, de]);
 
   const cur = weatherData?.current;
   const emoji = cur ? getWeatherEmoji(cur.overcast, cur.current_precipitation) : '';

@@ -184,6 +184,7 @@ const HumidityBars: React.FC<ChartProps> = ({ records, language }) => {
 
 const HistoryChart: React.FC = () => {
   const { currentLocation } = useLocation();
+  const currentLocationId = currentLocation?.id;
   const { language } = useLanguage();
   const de = language === 'de';
 
@@ -193,17 +194,17 @@ const HistoryChart: React.FC = () => {
   const [days, setDays]       = useState(7);
 
   useEffect(() => {
-    if (!currentLocation) { setData(null); return; }
+    if (!currentLocationId) { setData(null); return; }
     setLoading(true);
     setError('');
-    fetch(`/api/history/${currentLocation.id}?days=${days}`)
+    fetch(`/api/history/${currentLocationId}?days=${days}`)
       .then(r => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json() as Promise<HistoryResponse>;
       })
       .then(d => { setData(d); setLoading(false); })
       .catch(e => { setError(String(e)); setLoading(false); });
-  }, [currentLocation?.id, days]);
+  }, [currentLocationId, days]);
 
   if (!currentLocation) {
     return (
