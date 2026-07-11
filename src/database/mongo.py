@@ -88,6 +88,10 @@ def _activities_col() -> Collection:
     return get_db()["user_activities"]
 
 
+def _quota_col() -> Collection:
+    return get_db()["gemini_quota"]
+
+
 # ── Weather snapshots ──────────────────────────────────────────────────────────
 
 def upsert_weather(
@@ -295,6 +299,24 @@ def get_user_activities(user_id: str, days: int = 30) -> list[dict]:
             {"_id": 0},
         ).sort("timestamp", DESCENDING)
     )
+
+
+# ── Gemini quota tracking ───────────────────────────────────────────────────────
+# Shared across text_generation.py and chat.py so a model discovered
+# daily-exhausted by one code path is skipped (no wasted request) by the other.
+
+def mark_model_exhausted(model: str, day: str) -> None:
+    """Record that a Gemini model hit its daily quota on the given (Pacific) day."""
+    _quota_col().update_one(
+        {"model": model, "day": day},
+        {"$set": {"model": model, "day": day, "marked_at": datetime.now(timezone.utc)}},
+        upsert=True,
+    )
+
+
+def get_exhausted_models(day: str) -> list[str]:
+    """Return model names known to be daily-exhausted on the given (Pacific) day."""
+    return [doc["model"] for doc in _quota_col().find({"day": day}, {"_id": 0, "model": 1})]
 
 
 def get_history(zipcode: str, days: int = 14) -> list[dict]:

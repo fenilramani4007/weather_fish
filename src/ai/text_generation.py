@@ -16,20 +16,13 @@ from datetime import datetime, timezone
 from google import genai
 from google.genai.errors import ClientError
 from database import io
+from ai import quota
 
 client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
-# Model priority — broadest quota coverage
-# 2.5 and 2.0 have separate free-tier quota buckets
-# 1.5 models need versioned names (gemini-1.5-flash-001) for v1beta API
-MODELS = [
-    "gemini-2.5-flash-preview-05-20",  # newest, own quota bucket
-    "gemini-2.5-flash",                # 2.5 GA
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-lite",
-    "gemini-1.5-flash-001",            # versioned (was: gemini-1.5-flash)
-    "gemini-1.5-flash-8b-001",         # versioned (was: gemini-1.5-flash-8b)
-]
+# Model priority — shared with chat.py via ai.quota so both code paths agree
+# on which models are already daily-exhausted (see ai/quota.py docstring).
+MODELS = quota.MODELS
 
 MAX_RETRIES = 3
 BASE_WAIT   = 15  # seconds for first retry (per-minute 429)
@@ -60,6 +53,10 @@ def prompt(
     last_error: Exception | None = None
 
     for model in MODELS:
+        if quota.is_exhausted(model):
+            print(f"[Gemini] {model} already known exhausted today — skipping (no API call)")
+            continue
+
         for attempt in range(MAX_RETRIES):
             try:
                 print(f"[Gemini] model={model} attempt={attempt + 1} presenter={person}")
@@ -72,9 +69,11 @@ def prompt(
                 last_error = exc
                 code = _extract_code(exc)
                 if code == 429:
-                    if _is_daily_limit(exc):
+                    if quota.is_daily_limit_error(exc):
                         # Daily quota exhausted — retrying won't help, skip model immediately
+                        # and remember it so no other caller (or future call) wastes a request on it today
                         print(f"[Gemini] Daily quota exhausted for {model} — skipping")
+                        quota.mark_exhausted(model)
                         break
                     wait = BASE_WAIT * (2 ** attempt) + random.uniform(0, 5)
                     print(f"[Gemini] 429 on {model} (per-minute) — waiting {wait:.1f}s")
@@ -278,15 +277,6 @@ def _template_fallback(
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
-
-def _is_daily_limit(exc: ClientError) -> bool:
-    """True when the quota violation is a daily (not per-minute) limit."""
-    try:
-        msg = str(exc)
-        return "PerDay" in msg or "limit: 0" in msg
-    except Exception:
-        return False
-
 
 def _extract_code(exc: ClientError) -> int | None:
     code = getattr(exc, "code", None)

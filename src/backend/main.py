@@ -18,6 +18,7 @@ from backend.auth import (
     get_current_user, optional_user,
 )
 from database import mongo
+from ai import quota as gemini_quota
 from ai import chat as ai_chat
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
@@ -241,6 +242,7 @@ def get_status():
         "snapshots":   len(mongo.get_all_weather())    if db_ok else None,
         "reports":     len(mongo.get_all_reports())    if db_ok else None,
         "locations":   len(mongo.get_all_locations())  if db_ok else None,
+        "gemini_quota": gemini_quota.status(),
     }
 
 

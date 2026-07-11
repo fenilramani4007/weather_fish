@@ -8,6 +8,8 @@ import os
 from google import genai
 from google.genai.errors import ClientError
 
+from ai import quota
+
 # ── Module-level client — same pattern as text_generation.py ──────────────────
 # Created once at import time so any key/config issues surface at startup.
 _client: genai.Client | None = None
@@ -21,17 +23,9 @@ try:
 except Exception as _exc:
     print(f"[Chat] WARNING: could not create Gemini client: {_exc}")
 
-# Model list — broadest quota coverage across buckets
-# 2.5 models have a separate free-tier quota from 2.0 models
-# 1.5 models need versioned names for v1beta API
-_CHAT_MODELS = [
-    "gemini-2.5-flash-preview-05-20",  # newest, separate quota bucket
-    "gemini-2.5-flash",                # 2.5 GA
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-lite",
-    "gemini-1.5-flash-001",            # versioned name (not gemini-1.5-flash)
-    "gemini-1.5-flash-8b-001",
-]
+# Model list — shared with text_generation.py via ai.quota so both code paths
+# agree on which models are already daily-exhausted (see ai/quota.py docstring).
+_CHAT_MODELS = quota.MODELS
 
 
 def reply(
@@ -48,6 +42,9 @@ def reply(
     prompt = _build_prompt(message, history, weather_ctx, language, extra_ctxs or [])
 
     for model in _CHAT_MODELS:
+        if quota.is_exhausted(model):
+            print(f"[Chat] {model} already known exhausted today — skipping (no API call)")
+            continue
         try:
             print(f"[Chat] Trying model={model}")
             response = _client.models.generate_content(model=model, contents=prompt)
@@ -62,12 +59,12 @@ def reply(
             print(f"[Chat] Empty response from {model}")
         except ClientError as exc:
             code = getattr(exc, "code", None)
-            msg  = str(exc)
             print(f"[Chat] ClientError on {model}: code={code} — {exc}")
             if code == 401:
                 break  # invalid key — no point trying other models
-            if code == 429 and ("PerDay" in msg or "limit: 0" in msg):
+            if code == 429 and quota.is_daily_limit_error(exc):
                 print(f"[Chat] Daily quota exhausted for {model} — skipping")
+                quota.mark_exhausted(model)
             continue   # 404, 429 per-min, 500 → try next model
         except Exception as exc:
             print(f"[Chat] Exception on {model}: {type(exc).__name__}: {exc}")
