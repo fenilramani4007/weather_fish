@@ -26,13 +26,22 @@ _PACIFIC = ZoneInfo("America/Los_Angeles")
 
 # Shared fallback chain — single source of truth for both report generation
 # and chat, so they can never drift out of sync with each other.
+#
+# IMPORTANT: the v1beta /models catalog listing a model does NOT mean it's
+# actually callable — e.g. gemini-2.5-flash-lite is listed but returns 404
+# "no longer available to new users" for this project's key. Every entry
+# below was confirmed with a real generateContent call on 2026-07-11 (either
+# a successful response, or a 429 quota error — never a 404). If this chain
+# starts 404ing again, re-verify with a live call per model, not just the
+# catalog listing.
 MODELS = [
-    "gemini-2.5-flash-preview-05-20",  # newest, own quota bucket
-    "gemini-2.5-flash",                # 2.5 GA
+    "gemini-2.5-flash",
     "gemini-2.0-flash",
     "gemini-2.0-flash-lite",
-    "gemini-1.5-flash-001",            # versioned (was: gemini-1.5-flash)
-    "gemini-1.5-flash-8b-001",         # versioned (was: gemini-1.5-flash-8b)
+    "gemini-flash-latest",       # alias to Google's current default flash GA
+    "gemini-flash-lite-latest",  # alias to Google's current default flash-lite GA
+    "gemini-3-flash-preview",
+    "gemini-3.1-flash-lite",
 ]
 
 # In-process cache: {model_name: pacific_date_str_when_marked_exhausted}
@@ -81,6 +90,16 @@ def is_daily_limit_error(exc: Exception) -> bool:
         return "PerDay" in msg or "limit: 0" in msg
     except Exception:
         return False
+
+
+def is_model_not_found_error(exc: Exception) -> bool:
+    """
+    True when a model has been retired/renamed by Google (HTTP 404) rather than
+    just rate-limited. This is permanent, not daily, but our tracker is
+    day-granular — marking it exhausted-for-today still stops every other
+    caller from re-wasting a request on a dead model for the rest of the day.
+    """
+    return getattr(exc, "code", None) == 404
 
 
 def status() -> dict:

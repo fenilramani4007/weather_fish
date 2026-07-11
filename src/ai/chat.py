@@ -65,6 +65,9 @@ def reply(
             if code == 429 and quota.is_daily_limit_error(exc):
                 print(f"[Chat] Daily quota exhausted for {model} — skipping")
                 quota.mark_exhausted(model)
+            elif quota.is_model_not_found_error(exc):
+                print(f"[Chat] {model} not found (retired?) — skipping for today")
+                quota.mark_exhausted(model)
             continue   # 404, 429 per-min, 500 → try next model
         except Exception as exc:
             print(f"[Chat] Exception on {model}: {type(exc).__name__}: {exc}")

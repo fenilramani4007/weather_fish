@@ -78,6 +78,12 @@ def prompt(
                     wait = BASE_WAIT * (2 ** attempt) + random.uniform(0, 5)
                     print(f"[Gemini] 429 on {model} (per-minute) — waiting {wait:.1f}s")
                     time.sleep(wait)
+                elif quota.is_model_not_found_error(exc):
+                    # Model retired/renamed by Google — retrying is pointless, and so is
+                    # letting every other caller re-discover this today via its own 404
+                    print(f"[Gemini] {model} not found (retired?) — skipping for today: {exc}")
+                    quota.mark_exhausted(model)
+                    break
                 else:
                     print(f"[Gemini] Non-retryable error on {model}: {exc}")
                     break
